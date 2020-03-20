@@ -10,11 +10,21 @@ CFLAGS    := -std=c11 -g -static
 
 MAKEDIR_P     := mkdir -p
 
+
 $(BUILD_DIR)/$(TARGET): $(OBJS)
 	$(CC) $^ -o $@
 
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
 	$(MAKEDIR_P) $(BUILD_DIR) && $(CC) $(CFLAGS) -c $< -o $@
+
+
+$(BUILD_DIR)/test_mincc_vector.out:\
+	$(BUILD_DIR)/test_mincc_vector.o $(BUILD_DIR)/mincc_vector.o $(BUILD_DIR)/mincc_memory.o
+	$(CC) $^ -o $@
+
+$(BUILD_DIR)/%.o: $(TEST_DIR)/%.c
+	$(MAKEDIR_P) $(BUILD_DIR) && $(CC) $(CFLAGS) -c $< -o $@
+
 
 test:
 	TEST_DIR/test.sh
