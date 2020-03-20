@@ -1,12 +1,14 @@
 #!/usr/local/bin/zsh
 
-test_initial_src() {
+test_mincc() {
     MINCC=./build/mincc.out
     ASSEMBLY=./build/out.s
     EXEC=./build/out
 
     input=$1
-    ${MINCC} ${input} > ${ASSEMBLY} && gcc-9 ${ASSEMBLY} -o ${EXEC} && ${EXEC}
+    echo ${input} | ${MINCC} ${input} > ${ASSEMBLY}
+    gcc-9 ${ASSEMBLY} -o ${EXEC}
+    ${EXEC}
 
     actual=$?
     expected=$2
@@ -20,10 +22,9 @@ test_initial_src() {
     rm -Rf ${ASSEMBLY} ${EXEC}
 }
 
-test_all() {
-    test_initial_src  0  0
-    test_initial_src 42 42
-    echo "OK"
-}
-
-test_all
+test_mincc  0 0
+test_mincc 42 42
+test_mincc 1-6+10 5
+test_mincc 2+110-92 20
+test_mincc 1000-990+121+92 223
+echo "OK"
