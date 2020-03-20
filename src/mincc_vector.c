@@ -13,20 +13,21 @@ Vector* vector_new() {
 }
 
 void vector_reserve(Vector* vector, size_t size) {
-    vector->data = safe_realloc(vector->data, size * sizeof(void*));
+    vector->data = (vector_item_t*)safe_realloc(vector->data, size * sizeof(vector_item_t));
     vector->capacity = size;
     if (vector->size > size) vector->size = size;
 }
 
-void vector_push_back(Vector* vector, void* item) {
+void vector_push_back(Vector* vector, vector_item_t item) {
     if (vector->data == NULL) {
-        vector->data = safe_malloc(sizeof(void*));
+        vector->data = (vector_item_t*)safe_malloc(sizeof(vector_item_t));
         vector->data[0] = item;
         vector->size = 1;
         vector->capacity = 1;
     } else {
         if (vector->size == vector->capacity) {
-            vector->data = safe_realloc(vector->data, (2*vector->capacity) * sizeof(void*));
+            vector->data = (vector_item_t*)safe_realloc(
+                vector->data, (2*vector->capacity) * sizeof(vector_item_t));
             vector->capacity *= 2;
         }
         vector->data[vector->size] = item;
@@ -40,6 +41,10 @@ void* vector_at(Vector* vector, size_t index) {
 }
 
 void vector_delete(Vector* vector) {
+    size_t capacity = vector->capacity;
+    for (size_t i = 0; i < capacity; ++i) {
+        free(vector->data[i]);
+    }
     free(vector->data);
     free(vector);
 }
