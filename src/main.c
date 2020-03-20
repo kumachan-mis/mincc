@@ -16,6 +16,9 @@ typedef enum {
     TOKEN_INT,
     TOKEN_PLUS,
     TOKEN_MINUS,
+    TOKEN_ASTERISK,
+    TOKEN_SLASH,
+    TOKEN_PERCENT,
     TOKEN_EOF
 } TokenType;
 
@@ -34,7 +37,10 @@ void tokens_delete(Vector* tokens);
 typedef enum {
     AST_INT,
     AST_ADD,
-    AST_SUB
+    AST_SUB,
+    AST_MUL,
+    AST_DIV,
+    AST_MOD
 } AstType;
 
 typedef struct _Ast {
@@ -44,8 +50,10 @@ typedef struct _Ast {
     struct _Ast *rhs;
 } Ast;
 
-Ast* parse(Vector* tokens);
-Ast* parse_int(Vector* tokens, size_t* pos);
+Ast* parse_expr(Vector* tokens);
+Ast* parse_primary_expr(Vector* tokens, size_t* pos);
+Ast* parse_additive_expr(Vector* tokens, size_t* pos);
+Ast* parse_multiplicative_expr(Vector* tokens, size_t* pos);
 Ast* ast_new(AstType type);
 Ast* ast_delete(Ast* ast);
 
@@ -58,7 +66,7 @@ int main(int argc, char* argv[]) {
     fprintf(stdout, "_main:\n");
 
     Vector* tokens = tokenize(stdin);
-    Ast* ast = parse(tokens);
+    Ast* ast = parse_expr(tokens);
     print_code(ast);
 
     printf("\tpop %%rax\n");
@@ -93,6 +101,12 @@ Token* read_token(FILE* file_ptr) {
             return token_new(TOKEN_PLUS);
         case '-':
             return token_new(TOKEN_MINUS);
+        case '*':
+            return token_new(TOKEN_ASTERISK);
+        case '/':
+            return token_new(TOKEN_SLASH);
+        case '%':
+            return token_new(TOKEN_PERCENT);
         default:
             return token_new(TOKEN_EOF);
     }
@@ -124,43 +138,84 @@ void tokens_delete(Vector* tokens) {
     vector_delete(tokens);
 }
 
-Ast* parse(Vector* tokens) {
+Ast* parse_expr(Vector* tokens) {
     size_t pos = 0;
-    Ast* ast = parse_int(tokens, &pos);
-    Ast* lhs = NULL;
-    Ast* rhs = NULL;
-
-    while (1) {
-        Token* token = (Token*)vector_at(tokens, pos);
-        pos++;
-        switch (token->type) {
-            case TOKEN_PLUS:
-                lhs = ast;
-                rhs = parse_int(tokens, &pos);
-                ast = ast_new(AST_ADD);
-                ast->lhs = lhs;
-                ast->rhs = rhs;
-                break;
-            case TOKEN_MINUS:
-                lhs = ast;
-                rhs = parse_int(tokens, &pos);
-                ast = ast_new(AST_SUB);
-                ast->lhs = lhs;
-                ast->rhs = rhs;
-                break;
-            default:
-                return ast;
-        }
-    }
+    return parse_additive_expr(tokens, &pos);
 }
 
-Ast* parse_int(Vector* tokens, size_t* pos) {
+Ast* parse_primary_expr(Vector* tokens, size_t* pos) {
     Ast* ast = ast_new(AST_INT);
     Token* token = (Token*)vector_at(tokens, *pos);
     (*pos)++;
     assert(token->type == TOKEN_INT);
     ast->value.value_int = token->value.value_int;
     return ast;
+}
+
+Ast* parse_additive_expr(Vector* tokens, size_t* pos) {
+    Ast* ast = parse_multiplicative_expr(tokens, pos);
+    Ast* lhs = NULL;
+    Ast* rhs = NULL;
+
+    while (1) {
+        Token* token = (Token*)vector_at(tokens, *pos);
+        (*pos)++;
+        switch (token->type) {
+            case TOKEN_PLUS:
+                lhs = ast;
+                rhs = parse_multiplicative_expr(tokens, pos);
+                ast = ast_new(AST_ADD);
+                ast->lhs = lhs;
+                ast->rhs = rhs;
+                break;
+            case TOKEN_MINUS:
+                lhs = ast;
+                rhs = parse_multiplicative_expr(tokens, pos);
+                ast = ast_new(AST_SUB);
+                ast->lhs = lhs;
+                ast->rhs = rhs;
+                break;
+            default:
+                (*pos)--;
+                return ast;
+        }
+    }
+}
+
+Ast* parse_multiplicative_expr(Vector* tokens, size_t* pos) {
+    Ast* ast = parse_primary_expr(tokens, pos);
+    Ast* lhs = NULL;
+    Ast* rhs = NULL;
+    while (1) {
+        Token* token = (Token*)vector_at(tokens, *pos);
+        (*pos)++;
+        switch (token->type) {
+            case TOKEN_ASTERISK:
+                lhs = ast;
+                rhs = parse_primary_expr(tokens, pos);
+                ast = ast_new(AST_MUL);
+                ast->lhs = lhs;
+                ast->rhs = rhs;
+                break;
+            case TOKEN_SLASH:
+                lhs = ast;
+                rhs = parse_primary_expr(tokens, pos);
+                ast = ast_new(AST_DIV);
+                ast->lhs = lhs;
+                ast->rhs = rhs;
+                break;
+            case TOKEN_PERCENT:
+                lhs = ast;
+                rhs = parse_primary_expr(tokens, pos);
+                ast = ast_new(AST_MOD);
+                ast->lhs = lhs;
+                ast->rhs = rhs;
+                break;
+            default:
+                (*pos)--;
+                return ast;
+        }
+    }
 }
 
 Ast* ast_new(AstType type) {
@@ -183,21 +238,35 @@ void print_code(Ast* ast) {
     print_code(ast->lhs);
     print_code(ast->rhs);
 
+    if (ast->type == AST_INT) {
+        fprintf(stdout, "\tpush $%d\n", ast->value.value_int);
+        return;
+    }
+
+    fprintf(stdout, "\tpop %%rdi\n");
+    fprintf(stdout, "\tpop %%rax\n");
     switch (ast->type) {
         case AST_ADD:
-            fprintf(stdout, "\tpop %%rdi\n");
-            fprintf(stdout, "\tpop %%rax\n");
             fprintf(stdout, "\tadd %%edi, %%eax\n");
             fprintf(stdout, "\tpush %%rax\n");
             break;
         case AST_SUB:
-            fprintf(stdout, "\tpop %%rdi\n");
-            fprintf(stdout, "\tpop %%rax\n");
             fprintf(stdout, "\tsub %%edi, %%eax\n");
             fprintf(stdout, "\tpush %%rax\n");
             break;
-        case AST_INT:
-            fprintf(stdout, "\tpush $%d\n", ast->value.value_int);
+        case AST_MUL:
+            fprintf(stdout, "\timul %%edi, %%eax\n");
+            fprintf(stdout, "\tpush %%rax\n");
+            break;
+        case AST_DIV:
+            fprintf(stdout, "\tcltd\n");
+            fprintf(stdout, "\tidiv %%edi\n");
+            fprintf(stdout, "\tpush %%rax\n");
+            break;
+        case AST_MOD:
+            fprintf(stdout, "\tcltd\n");
+            fprintf(stdout, "\tidiv %%edi\n");
+            fprintf(stdout, "\tpush %%rdx\n");
             break;
         default:
             exit(1);

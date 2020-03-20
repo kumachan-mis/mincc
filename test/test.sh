@@ -24,7 +24,13 @@ test_mincc() {
 
 test_mincc  0 0
 test_mincc 42 42
-test_mincc 1-6+10 5
-test_mincc 2+110-92 20
-test_mincc 1000-990+121+92 223
+
+test_mincc "1-6+10"            5
+test_mincc "2+110-92"         20
+test_mincc "1000-990+121+92" 223
+
+test_mincc "1*2+5*8"    42
+test_mincc "5*6-10/2"   25
+test_mincc "100/3/3"    11
+test_mincc "100%7+22%6"  6
 echo "OK"
