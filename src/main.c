@@ -13,9 +13,13 @@ typedef union {
 
 typedef enum {
     TOKEN_INT,
+    TOKEN_DBL_AND,
+    TOKEN_DBL_BAR,
+    TOKEN_EXCL,
     TOKEN_BAR,
     TOKEN_HAT,
     TOKEN_AND,
+    TOKEN_TILDER,
     TOKEN_DBL_EQ,
     TOKEN_EXCL_EQ,
     TOKEN_LANGLE,
@@ -45,14 +49,19 @@ Token* read_token_int(FILE* file_ptr);
 void skip_spaces(FILE* file_ptr);
 Token* token_new(TokenType type);
 void tokens_delete(Vector* tokens);
+
 void assert_lexicon(int condition);
 
 
 typedef enum {
     AST_INT,
+    AST_LAND,
+    AST_LOR,
+    AST_LNOT,
     AST_OR,
     AST_XOR,
     AST_AND,
+    AST_NOT,
     AST_EQ,
     AST_NEQ,
     AST_LT,
@@ -79,6 +88,8 @@ typedef struct _Ast {
 
 Ast* parse(Vector* tokens);
 Ast* parse_expr(Vector* tokens, size_t* pos);
+Ast* parse_logical_or_expr(Vector* tokens, size_t* pos);
+Ast* parse_logical_and_expr(Vector* tokens, size_t* pos);
 Ast* parse_or_expr(Vector* tokens, size_t* pos);
 Ast* parse_xor_expr(Vector* tokens, size_t* pos);
 Ast* parse_and_expr(Vector* tokens, size_t* pos);
@@ -91,10 +102,33 @@ Ast* parse_unary_expr(Vector* tokens, size_t* pos);
 Ast* parse_primary_expr(Vector* tokens, size_t* pos);
 Ast* ast_new(AstType type);
 Ast* ast_delete(Ast* ast);
+
 void assert_syntax(int condition);
 
 
+typedef struct {
+    int num_labels;
+} CodeEnvironment;
+
 void print_code(Ast* ast);
+void gen_code(Ast* ast, CodeEnvironment* env, FILE* file_ptr);
+void gen_logical_expr_code(Ast* ast, CodeEnvironment* env, FILE* file_ptr);
+void gen_bitwise_expr_code(Ast* ast, CodeEnvironment* env, FILE* file_ptr);
+void gen_comparative_expr_code(Ast* ast, CodeEnvironment* env, FILE* file_ptr);
+void gen_shift_expr_code(Ast* ast, CodeEnvironment* env, FILE* file_ptr);
+void gen_arithmetical_expr_code(Ast* ast, CodeEnvironment* env, FILE* file_ptr);
+void gen_unary_expr_code(Ast* ast, CodeEnvironment* env, FILE* file_ptr);
+void gen_primary_expr_code(Ast* ast, CodeEnvironment* env, FILE* file_ptr);
+
+int is_logical_expr(AstType type);
+int is_bitwise_expr(AstType type);
+int is_comparative_expr(AstType type);
+int is_shift_expr(AstType type);
+int is_arithmetical_expr(AstType type);
+int is_unary_expr(AstType type);
+int is_primary_expr(AstType type);
+
+void assert_code_gen(int condition);
 
 
 int main(int argc, char* argv[]) {
@@ -135,19 +169,37 @@ Token* read_token(FILE* file_ptr) {
     char snd = '\0';
     switch (fst) {
         case '|':
-            return token_new(TOKEN_BAR);
+            snd = fgetc(file_ptr);
+            if (snd == '|') {
+                return token_new(TOKEN_DBL_BAR);
+            } else {
+                ungetc(snd, file_ptr);
+                return token_new(TOKEN_BAR);
+            }
         case '^':
             return token_new(TOKEN_HAT);
         case '&':
-            return token_new(TOKEN_AND);
+            snd = fgetc(file_ptr);
+            if (snd == '&') {
+                return token_new(TOKEN_DBL_AND);
+            } else {
+                ungetc(snd, file_ptr);
+                return token_new(TOKEN_AND);
+            }
+        case '~':
+            return token_new(TOKEN_TILDER);
         case '=':
             snd = fgetc(file_ptr);
             if (snd == '=') return token_new(TOKEN_DBL_EQ);
             break;
         case '!':
             snd = fgetc(file_ptr);
-            if (snd == '=') return token_new(TOKEN_EXCL_EQ);
-            break;
+            if (snd == '=') {
+                return token_new(TOKEN_EXCL_EQ);
+            } else {
+                ungetc(snd, file_ptr);
+                return token_new(TOKEN_EXCL);
+            }
         case '<':
             snd = fgetc(file_ptr);
             if (snd == '<') {
@@ -237,7 +289,53 @@ Ast* parse(Vector* tokens) {
 }
 
 Ast* parse_expr(Vector* tokens, size_t* pos) {
-    return parse_or_expr(tokens, pos);
+    return parse_logical_or_expr(tokens, pos);
+}
+
+Ast* parse_logical_or_expr(Vector* tokens, size_t* pos) {
+    Ast* ast = parse_logical_and_expr(tokens, pos);
+    Ast* lhs = NULL;
+    Ast* rhs = NULL;
+
+    while (1) {
+        Token* token = (Token*)vector_at(tokens, *pos);
+        (*pos)++;
+        switch (token->type) {
+            case TOKEN_DBL_BAR:
+                lhs = ast;
+                rhs = parse_logical_and_expr(tokens, pos);
+                ast = ast_new(AST_LOR);
+                ast->lhs = lhs;
+                ast->rhs = rhs;
+                break;
+            default:
+                (*pos)--;
+                return ast;
+        }
+    }
+}
+
+Ast* parse_logical_and_expr(Vector* tokens, size_t* pos) {
+    Ast* ast = parse_or_expr(tokens, pos);
+    Ast* lhs = NULL;
+    Ast* rhs = NULL;
+
+    while (1) {
+        Token* token = (Token*)vector_at(tokens, *pos);
+        (*pos)++;
+        switch (token->type) {
+            case TOKEN_DBL_AND:
+                lhs = ast;
+                rhs = parse_or_expr(tokens, pos);
+                ast = ast_new(AST_LAND);
+                ast->lhs = lhs;
+                ast->rhs = rhs;
+                break;
+            default:
+                (*pos)--;
+                return ast;
+        }
+    }
 }
 
 Ast* parse_or_expr(Vector* tokens, size_t* pos) {
@@ -496,6 +594,16 @@ Ast* parse_unary_expr(Vector* tokens, size_t* pos) {
             ast = ast_new(AST_NEGA);
             ast->lhs = lhs;
             break;
+        case TOKEN_TILDER:
+            lhs = parse_unary_expr(tokens, pos);
+            ast = ast_new(AST_NOT);
+            ast->lhs = lhs;
+            break;
+        case TOKEN_EXCL:
+            lhs = parse_unary_expr(tokens, pos);
+            ast = ast_new(AST_LNOT);
+            ast->lhs = lhs;
+            break;
         default:
             (*pos)--;
             ast = parse_primary_expr(tokens, pos);
@@ -549,131 +657,240 @@ void assert_syntax(int condition) {
 void print_code(Ast* ast) {
     if (ast == NULL) return;
 
-    print_code(ast->lhs);
-    print_code(ast->rhs);
+    CodeEnvironment env;
+    env.num_labels = 0;
+    gen_code(ast, &env, stdout);
+}
+
+void gen_code(Ast* ast, CodeEnvironment* env, FILE* file_ptr) {
+    AstType type = ast->type;
+
+    if (is_logical_expr(type)) {
+        gen_logical_expr_code(ast, env, file_ptr);
+    } else if (is_bitwise_expr(type)) {
+        gen_bitwise_expr_code(ast, env, file_ptr);
+    } else if (is_comparative_expr(type)) {
+        gen_comparative_expr_code(ast, env, file_ptr);
+    } else if (is_shift_expr(type)) {
+        gen_shift_expr_code(ast, env, file_ptr);
+    } else if (is_arithmetical_expr(type)) {
+        gen_arithmetical_expr_code(ast, env, file_ptr);
+    } else if (is_unary_expr(type)) {
+        gen_unary_expr_code(ast, env, file_ptr);
+    } else if (is_primary_expr(type)) {
+        gen_primary_expr_code(ast, env, file_ptr);
+    } else  {
+        assert_code_gen(0);
+    }
+}
+
+void gen_logical_expr_code(Ast* ast, CodeEnvironment* env, FILE* file_ptr) {
+    int exit_labno = env->num_labels; env->num_labels++;
+
+    gen_code(ast->lhs, env, file_ptr);
+    fprintf(file_ptr, "\tpop %%rax\n");
+    fprintf(file_ptr, "\tcmp $0, %%rax\n");
 
     switch (ast->type) {
+        case AST_LOR:
+            fprintf(file_ptr, "\tjne .L%d\n", exit_labno);
+            break;
+        case AST_LAND:
+            fprintf(file_ptr, "\tje .L%d\n", exit_labno);
+            break;
+    }
+
+    gen_code(ast->rhs, env, file_ptr);
+    fprintf(file_ptr, "\tpop %%rax\n");
+    fprintf(file_ptr, "\tcmp $0, %%rax\n");
+
+    fprintf(file_ptr, ".L%d:\n", exit_labno);
+    fprintf(file_ptr, "\tsetne %%al\n");
+    fprintf(file_ptr, "\tmovzb %%al, %%eax\n");
+    fprintf(file_ptr, "\tpush %%rax\n");
+}
+
+void gen_bitwise_expr_code(Ast* ast, CodeEnvironment* env, FILE* file_ptr) {
+    gen_code(ast->lhs, env, file_ptr);
+    gen_code(ast->rhs, env, file_ptr);
+
+    fprintf(file_ptr, "\tpop %%rdi\n");
+    fprintf(file_ptr, "\tpop %%rax\n");
+    switch (ast->type) {
         case AST_OR:
-            fprintf(stdout, "\tpop %%rdi\n");
-            fprintf(stdout, "\tpop %%rax\n");
-            fprintf(stdout, "\tor %%edi, %%eax\n");
-            fprintf(stdout, "\tpush %%rax\n");
+            fprintf(file_ptr, "\tor %%edi, %%eax\n");
             break;
         case AST_XOR:
-            fprintf(stdout, "\tpop %%rdi\n");
-            fprintf(stdout, "\tpop %%rax\n");
-            fprintf(stdout, "\txor %%edi, %%eax\n");
-            fprintf(stdout, "\tpush %%rax\n");
+            fprintf(file_ptr, "\txor %%edi, %%eax\n");
             break;
         case AST_AND:
-            fprintf(stdout, "\tpop %%rdi\n");
-            fprintf(stdout, "\tpop %%rax\n");
-            fprintf(stdout, "\tand %%edi, %%eax\n");
-            fprintf(stdout, "\tpush %%rax\n");
-            break;
-        case AST_EQ:
-            fprintf(stdout, "\tpop %%rdi\n");
-            fprintf(stdout, "\tpop %%rax\n");
-            fprintf(stdout, "\tcmp %%edi, %%eax\n");
-            fprintf(stdout, "\tsete %%al\n");
-            fprintf(stdout, "\tmovzb %%al, %%eax\n");
-            fprintf(stdout, "\tpush %%rax\n");
-            break;
-        case AST_NEQ:
-            fprintf(stdout, "\tpop %%rdi\n");
-            fprintf(stdout, "\tpop %%rax\n");
-            fprintf(stdout, "\tcmp %%edi, %%eax\n");
-            fprintf(stdout, "\tsetne %%al\n");
-            fprintf(stdout, "\tmovzb %%al, %%eax\n");
-            fprintf(stdout, "\tpush %%rax\n");
-            break;
-        case AST_LT:
-            fprintf(stdout, "\tpop %%rdi\n");
-            fprintf(stdout, "\tpop %%rax\n");
-            fprintf(stdout, "\tcmp %%edi, %%eax\n");
-            fprintf(stdout, "\tsetl %%al\n");
-            fprintf(stdout, "\tmovzb %%al, %%eax\n");
-            fprintf(stdout, "\tpush %%rax\n");
-            break;
-        case AST_GT:
-            fprintf(stdout, "\tpop %%rdi\n");
-            fprintf(stdout, "\tpop %%rax\n");
-            fprintf(stdout, "\tcmp %%edi, %%eax\n");
-            fprintf(stdout, "\tsetg %%al\n");
-            fprintf(stdout, "\tmovzb %%al, %%eax\n");
-            fprintf(stdout, "\tpush %%rax\n");
-            break;
-        case AST_LEQ:
-            fprintf(stdout, "\tpop %%rdi\n");
-            fprintf(stdout, "\tpop %%rax\n");
-            fprintf(stdout, "\tcmp %%edi, %%eax\n");
-            fprintf(stdout, "\tsetle %%al\n");
-            fprintf(stdout, "\tmovzb %%al, %%eax\n");
-            fprintf(stdout, "\tpush %%rax\n");
-            break;
-        case AST_GEQ:
-            fprintf(stdout, "\tpop %%rdi\n");
-            fprintf(stdout, "\tpop %%rax\n");
-            fprintf(stdout, "\tcmp %%edi, %%eax\n");
-            fprintf(stdout, "\tsetge %%al\n");
-            fprintf(stdout, "\tmovzb %%al, %%eax\n");
-            fprintf(stdout, "\tpush %%rax\n");
-            break;
-        case AST_LSHIFT:
-            fprintf(stdout, "\tpop %%rcx\n");
-            fprintf(stdout, "\tpop %%rax\n");
-            fprintf(stdout, "\tsal %%cl, %%eax\n");
-            fprintf(stdout, "\tpush %%rax\n");
-            break;
-        case AST_RSHIFT:
-            fprintf(stdout, "\tpop %%rcx\n");
-            fprintf(stdout, "\tpop %%rax\n");
-            fprintf(stdout, "\tsar %%cl, %%eax\n");
-            fprintf(stdout, "\tpush %%rax\n");
-            break;
-        case AST_ADD:
-            fprintf(stdout, "\tpop %%rdi\n");
-            fprintf(stdout, "\tpop %%rax\n");
-            fprintf(stdout, "\tadd %%edi, %%eax\n");
-            fprintf(stdout, "\tpush %%rax\n");
-            break;
-        case AST_SUB:
-            fprintf(stdout, "\tpop %%rdi\n");
-            fprintf(stdout, "\tpop %%rax\n");
-            fprintf(stdout, "\tsub %%edi, %%eax\n");
-            fprintf(stdout, "\tpush %%rax\n");
-            break;
-        case AST_MUL:
-            fprintf(stdout, "\tpop %%rdi\n");
-            fprintf(stdout, "\tpop %%rax\n");
-            fprintf(stdout, "\timul %%edi, %%eax\n");
-            fprintf(stdout, "\tpush %%rax\n");
-            break;
-        case AST_DIV:
-            fprintf(stdout, "\tpop %%rdi\n");
-            fprintf(stdout, "\tpop %%rax\n");
-            fprintf(stdout, "\tcltd\n");
-            fprintf(stdout, "\tidiv %%edi\n");
-            fprintf(stdout, "\tpush %%rax\n");
-            break;
-        case AST_MOD:
-            fprintf(stdout, "\tpop %%rdi\n");
-            fprintf(stdout, "\tpop %%rax\n");
-            fprintf(stdout, "\tcltd\n");
-            fprintf(stdout, "\tidiv %%edi\n");
-            fprintf(stdout, "\tpush %%rdx\n");
-            break;
-        case AST_POSI:
-            break;
-        case AST_NEGA:
-            fprintf(stdout, "\tpop %%rax\n");
-            fprintf(stdout, "\tneg %%eax\n");
-            fprintf(stdout, "\tpush %%rax\n");
-            break;
-        case AST_INT:
-            fprintf(stdout, "\tpush $%d\n", ast->value.value_int);
+            fprintf(file_ptr, "\tand %%edi, %%eax\n");
             break;
         default:
-            exit(1);
+            assert_code_gen(0);
     }
+    fprintf(file_ptr, "\tpush %%rax\n");
+}
+
+void gen_comparative_expr_code(Ast* ast, CodeEnvironment* env, FILE* file_ptr) {
+    gen_code(ast->lhs, env, file_ptr);
+    gen_code(ast->rhs, env, file_ptr);
+
+    fprintf(file_ptr, "\tpop %%rdi\n");
+    fprintf(file_ptr, "\tpop %%rax\n");
+    fprintf(file_ptr, "\tcmp %%edi, %%eax\n");
+    switch (ast->type) {
+        case AST_EQ:
+            fprintf(file_ptr, "\tsete %%al\n");
+            break;
+        case AST_NEQ:
+            fprintf(file_ptr, "\tsetne %%al\n");
+            break;
+        case AST_LT:
+            fprintf(file_ptr, "\tsetl %%al\n");
+            break;
+        case AST_GT:
+            fprintf(file_ptr, "\tsetg %%al\n");
+            break;
+        case AST_LEQ:
+            fprintf(file_ptr, "\tsetle %%al\n");
+            break;
+        case AST_GEQ:
+            fprintf(file_ptr, "\tsetge %%al\n");
+            break;
+        default:
+            assert_code_gen(0);
+    }
+    fprintf(file_ptr, "\tmovzb %%al, %%eax\n");
+    fprintf(file_ptr, "\tpush %%rax\n");
+}
+
+void gen_shift_expr_code(Ast* ast, CodeEnvironment* env, FILE* file_ptr) {
+    gen_code(ast->lhs, env, file_ptr);
+    gen_code(ast->rhs, env, file_ptr);
+
+    fprintf(file_ptr, "\tpop %%rcx\n");
+    fprintf(file_ptr, "\tpop %%rax\n");
+    switch (ast->type) {
+        case AST_LSHIFT:
+            fprintf(file_ptr, "\tsal %%cl, %%eax\n");
+            break;
+        case AST_RSHIFT:
+            fprintf(file_ptr, "\tsar %%cl, %%eax\n");
+            break;
+        default:
+            assert_code_gen(0);
+    }
+    fprintf(file_ptr, "\tpush %%rax\n");
+}
+
+void gen_arithmetical_expr_code(Ast* ast, CodeEnvironment* env, FILE* file_ptr) {
+    gen_code(ast->lhs, env, file_ptr);
+    gen_code(ast->rhs, env, file_ptr);
+
+    fprintf(file_ptr, "\tpop %%rdi\n");
+    fprintf(file_ptr, "\tpop %%rax\n");
+    switch (ast->type) {
+        case AST_ADD:
+            fprintf(file_ptr, "\tadd %%edi, %%eax\n");
+            fprintf(file_ptr, "\tpush %%rax\n");
+            break;
+        case AST_SUB:
+            fprintf(file_ptr, "\tsub %%edi, %%eax\n");
+            fprintf(file_ptr, "\tpush %%rax\n");
+            break;
+        case AST_MUL:
+            fprintf(file_ptr, "\timul %%edi, %%eax\n");
+            fprintf(file_ptr, "\tpush %%rax\n");
+            break;
+        case AST_DIV:
+            fprintf(file_ptr, "\tcltd\n");
+            fprintf(file_ptr, "\tidiv %%edi\n");
+            fprintf(file_ptr, "\tpush %%rax\n");
+            break;
+        case AST_MOD:
+            fprintf(file_ptr, "\tcltd\n");
+            fprintf(file_ptr, "\tidiv %%edi\n");
+            fprintf(file_ptr, "\tpush %%rdx\n");
+            break;
+        default:
+            assert_code_gen(0);
+    }
+}
+
+void gen_unary_expr_code(Ast* ast, CodeEnvironment* env, FILE* file_ptr) {
+    gen_code(ast->lhs, env, file_ptr);
+
+    switch (ast->type) {
+        case AST_POSI:
+            /* Do Nothing */
+            break;
+        case AST_NEGA:
+            fprintf(file_ptr, "\tpop %%rax\n");
+            fprintf(file_ptr, "\tneg %%eax\n");
+            fprintf(file_ptr, "\tpush %%rax\n");
+            break;
+        case AST_NOT:
+            fprintf(file_ptr, "\tpop %%rax\n");
+            fprintf(file_ptr, "\tnot %%eax\n");
+            fprintf(file_ptr, "\tpush %%rax\n");
+            break;
+        case AST_LNOT:
+            fprintf(file_ptr, "\tpop %%rax\n");
+            fprintf(file_ptr, "\tcmp $0, %%eax\n");
+            fprintf(file_ptr, "\tsete %%al\n");
+            fprintf(file_ptr, "\tmovzb %%al, %%eax\n");
+            fprintf(file_ptr, "\tpush %%rax\n");
+            break;
+        default:
+            assert_code_gen(0);
+    }
+}
+
+void gen_primary_expr_code(Ast* ast, CodeEnvironment* env, FILE* file_ptr) {
+    switch (ast->type) {
+        case AST_INT:
+            fprintf(file_ptr, "\tpush $%d\n", ast->value.value_int);
+            break;
+        default:
+            assert_code_gen(0);
+    }
+}
+
+int is_logical_expr(AstType type) {
+    return type == AST_LAND || type == AST_LOR;
+}
+
+int is_bitwise_expr(AstType type) {
+    return type == AST_AND || type == AST_XOR || type == AST_OR;
+}
+
+int is_comparative_expr(AstType type) {
+    return type == AST_EQ  || type == AST_NEQ ||
+           type == AST_LT  || type == AST_GT  ||
+           type == AST_LEQ || type == AST_GEQ;
+}
+
+int is_shift_expr(AstType type) {
+    return type == AST_LSHIFT || type == AST_RSHIFT;
+}
+
+int is_arithmetical_expr(AstType type) {
+    return type == AST_ADD || type == AST_SUB || type == AST_MUL ||
+           type == AST_DIV || type == AST_MOD;
+}
+
+int is_unary_expr(AstType type) {
+    return type == AST_POSI || type == AST_NEGA ||
+           type == AST_NOT  || type == AST_LNOT;
+}
+
+int is_primary_expr(AstType type) {
+    return type == AST_INT;
+}
+
+void assert_code_gen(int condition) {
+    if (condition) return;
+    fprintf(stderr, "Error: fail to generate code\n");
+    exit(1);
 }
