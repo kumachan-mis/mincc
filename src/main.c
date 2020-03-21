@@ -32,6 +32,7 @@ typedef struct {
 Vector* tokenize(FILE* file_ptr);
 Token* read_token(FILE* file_ptr);
 Token* read_token_int(FILE* file_ptr);
+void skip_spaces(FILE* file_ptr);
 Token* token_new(TokenType type);
 void tokens_delete(Vector* tokens);
 
@@ -87,6 +88,7 @@ int main(int argc, char* argv[]) {
 Vector* tokenize(FILE* file_ptr) {
     Vector* tokens = vector_new();
     while (1) {
+        skip_spaces(file_ptr);
         Token* token = read_token(file_ptr);
         vector_push_back(tokens, token);
         if (token->type == TOKEN_EOF) break;
@@ -136,6 +138,16 @@ Token* read_token_int(FILE* file_ptr) {
     Token* token = token_new(TOKEN_INT);
     token->value.value_int = value;
     return token;
+}
+
+void skip_spaces(FILE* file_ptr) {
+    while (1) {
+        char c = fgetc(file_ptr);
+        if (!isspace(c)) {
+            ungetc(c, file_ptr);
+            break;
+        }
+    }
 }
 
 Token* token_new(TokenType type) {
