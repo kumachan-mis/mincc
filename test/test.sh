@@ -48,22 +48,43 @@ test_mincc "10 + (-1 <<2)"   6
 test_mincc "9 >> 1"          4
 test_mincc "23 + 7*(-6 >>1)" 2
 
-test_mincc "0 == -1"  0
-test_mincc "0 == 0"   1
-test_mincc "0 == 1"   0
-test_mincc "0 != -1"  1
-test_mincc "0 != 0"   0
-test_mincc "0 != 1"   1
-test_mincc "0 < -1"   0
-test_mincc "0 < 0"    0
-test_mincc "0 < 1"    1
-test_mincc "0 > -1"   1
-test_mincc "0 > 0"    0
-test_mincc "0 > 1"    0
-test_mincc "0<=-1"    0
-test_mincc "0<= 0"    1
-test_mincc "0<= 1"    1
-test_mincc "0>=-1"    1
-test_mincc "0>= 0"    1
-test_mincc "0>= 1"    0
+test_mincc "0 == -1"    0
+test_mincc "0 == 0"     1
+test_mincc "0 == 1"     0
+test_mincc "0 != -1"    1
+test_mincc "0 != 0"     0
+test_mincc "0 != 1"     1
+test_mincc "0 < -1"     0
+test_mincc "0 < 0"      0
+test_mincc "0 < 1"      1
+test_mincc "0 > -1"     1
+test_mincc "0 > 0"      0
+test_mincc "0 > 1"      0
+test_mincc "0<=-1"      0
+test_mincc "0<= 0"      1
+test_mincc "0<= 1"      1
+test_mincc "0>=-1"      1
+test_mincc "0>= 0"      1
+test_mincc "0>= 1"      0
+test_mincc "0<1 == 1<2" 1
+test_mincc "0<1 == 1>2" 0
+test_mincc "0<1 != 1<2" 0
+test_mincc "0<1 != 1>2" 1
+
+test_mincc "2 & 1"      0
+test_mincc "3 & 6"      2
+test_mincc "2 ^ 1"      3
+test_mincc "3 ^ 6"      5
+test_mincc "2 | 1"      3
+test_mincc "3 | 6"      7
+test_mincc "0&1 ^ 1&1"  1
+test_mincc "0&1 ^ 1&0"  0
+test_mincc "1&1 ^ 1&1"  0
+test_mincc "0^1 | 1^1"  1
+test_mincc "0^1 | 1^0"  1
+test_mincc "1^1 | 1^1"  0
+test_mincc "0&1 | 1&1"  1
+test_mincc "0&1 | 1&0"  0
+test_mincc "1&1 | 1&1"  1
+
 echo "OK"

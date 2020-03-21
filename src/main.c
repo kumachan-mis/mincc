@@ -13,6 +13,9 @@ typedef union {
 
 typedef enum {
     TOKEN_INT,
+    TOKEN_BAR,
+    TOKEN_HAT,
+    TOKEN_AND,
     TOKEN_DBL_EQ,
     TOKEN_EXCL_EQ,
     TOKEN_LANGLE,
@@ -47,6 +50,9 @@ void assert_lexicon(int condition);
 
 typedef enum {
     AST_INT,
+    AST_OR,
+    AST_XOR,
+    AST_AND,
     AST_EQ,
     AST_NEQ,
     AST_LT,
@@ -73,6 +79,9 @@ typedef struct _Ast {
 
 Ast* parse(Vector* tokens);
 Ast* parse_expr(Vector* tokens, size_t* pos);
+Ast* parse_or_expr(Vector* tokens, size_t* pos);
+Ast* parse_xor_expr(Vector* tokens, size_t* pos);
+Ast* parse_and_expr(Vector* tokens, size_t* pos);
 Ast* parse_equality_expr(Vector* tokens, size_t* pos);
 Ast* parse_relational_expr(Vector* tokens, size_t* pos);
 Ast* parse_shift_expr(Vector* tokens, size_t* pos);
@@ -125,6 +134,12 @@ Token* read_token(FILE* file_ptr) {
 
     char snd = '\0';
     switch (fst) {
+        case '|':
+            return token_new(TOKEN_BAR);
+        case '^':
+            return token_new(TOKEN_HAT);
+        case '&':
+            return token_new(TOKEN_AND);
         case '=':
             snd = fgetc(file_ptr);
             if (snd == '=') return token_new(TOKEN_DBL_EQ);
@@ -222,7 +237,76 @@ Ast* parse(Vector* tokens) {
 }
 
 Ast* parse_expr(Vector* tokens, size_t* pos) {
-    return parse_equality_expr(tokens, pos);
+    return parse_or_expr(tokens, pos);
+}
+
+Ast* parse_or_expr(Vector* tokens, size_t* pos) {
+    Ast* ast = parse_xor_expr(tokens, pos);
+    Ast* lhs = NULL;
+    Ast* rhs = NULL;
+
+    while (1) {
+        Token* token = (Token*)vector_at(tokens, *pos);
+        (*pos)++;
+        switch (token->type) {
+            case TOKEN_BAR:
+                lhs = ast;
+                rhs = parse_xor_expr(tokens, pos);
+                ast = ast_new(AST_OR);
+                ast->lhs = lhs;
+                ast->rhs = rhs;
+                break;
+            default:
+                (*pos)--;
+                return ast;
+        }
+    }
+}
+
+Ast* parse_xor_expr(Vector* tokens, size_t* pos) {
+    Ast* ast = parse_and_expr(tokens, pos);
+    Ast* lhs = NULL;
+    Ast* rhs = NULL;
+
+    while (1) {
+        Token* token = (Token*)vector_at(tokens, *pos);
+        (*pos)++;
+        switch (token->type) {
+            case TOKEN_HAT:
+                lhs = ast;
+                rhs = parse_and_expr(tokens, pos);
+                ast = ast_new(AST_XOR);
+                ast->lhs = lhs;
+                ast->rhs = rhs;
+                break;
+            default:
+                (*pos)--;
+                return ast;
+        }
+    }
+}
+
+Ast* parse_and_expr(Vector* tokens, size_t* pos) {
+    Ast* ast = parse_equality_expr(tokens, pos);
+    Ast* lhs = NULL;
+    Ast* rhs = NULL;
+
+    while (1) {
+        Token* token = (Token*)vector_at(tokens, *pos);
+        (*pos)++;
+        switch (token->type) {
+            case TOKEN_AND:
+                lhs = ast;
+                rhs = parse_equality_expr(tokens, pos);
+                ast = ast_new(AST_AND);
+                ast->lhs = lhs;
+                ast->rhs = rhs;
+                break;
+            default:
+                (*pos)--;
+                return ast;
+        }
+    }
 }
 
 Ast* parse_equality_expr(Vector* tokens, size_t* pos) {
@@ -469,6 +553,24 @@ void print_code(Ast* ast) {
     print_code(ast->rhs);
 
     switch (ast->type) {
+        case AST_OR:
+            fprintf(stdout, "\tpop %%rdi\n");
+            fprintf(stdout, "\tpop %%rax\n");
+            fprintf(stdout, "\tor %%edi, %%eax\n");
+            fprintf(stdout, "\tpush %%rax\n");
+            break;
+        case AST_XOR:
+            fprintf(stdout, "\tpop %%rdi\n");
+            fprintf(stdout, "\tpop %%rax\n");
+            fprintf(stdout, "\txor %%edi, %%eax\n");
+            fprintf(stdout, "\tpush %%rax\n");
+            break;
+        case AST_AND:
+            fprintf(stdout, "\tpop %%rdi\n");
+            fprintf(stdout, "\tpop %%rax\n");
+            fprintf(stdout, "\tand %%edi, %%eax\n");
+            fprintf(stdout, "\tpush %%rax\n");
+            break;
         case AST_EQ:
             fprintf(stdout, "\tpop %%rdi\n");
             fprintf(stdout, "\tpop %%rax\n");
