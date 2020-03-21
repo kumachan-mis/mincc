@@ -47,4 +47,23 @@ test_mincc "1 << 3"          8
 test_mincc "10 + (-1 <<2)"   6
 test_mincc "9 >> 1"          4
 test_mincc "23 + 7*(-6 >>1)" 2
+
+test_mincc "0 == -1"  0
+test_mincc "0 == 0"   1
+test_mincc "0 == 1"   0
+test_mincc "0 != -1"  1
+test_mincc "0 != 0"   0
+test_mincc "0 != 1"   1
+test_mincc "0 < -1"   0
+test_mincc "0 < 0"    0
+test_mincc "0 < 1"    1
+test_mincc "0 > -1"   1
+test_mincc "0 > 0"    0
+test_mincc "0 > 1"    0
+test_mincc "0<=-1"    0
+test_mincc "0<= 0"    1
+test_mincc "0<= 1"    1
+test_mincc "0>=-1"    1
+test_mincc "0>= 0"    1
+test_mincc "0>= 1"    0
 echo "OK"
