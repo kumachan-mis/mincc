@@ -35,7 +35,7 @@ void vector_push_back(Vector* vector, vector_item_t item) {
     }
 }
 
-void* vector_at(Vector* vector, size_t index) {
+vector_item_t vector_at(Vector* vector, size_t index) {
     if (index < 0 || index >= vector->size) return NULL;
     return vector->data[index];
 }
