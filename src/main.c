@@ -13,6 +13,12 @@ typedef union {
 
 typedef enum {
     TOKEN_INT,
+    TOKEN_DBL_EQ,
+    TOKEN_EXCL_EQ,
+    TOKEN_LANGLE,
+    TOKEN_RANGLE,
+    TOKEN_LANGLE_EQ,
+    TOKEN_RANGLE_EQ,
     TOKEN_DBL_LANGLE,
     TOKEN_DBL_RANGLE,
     TOKEN_PLUS,
@@ -41,6 +47,12 @@ void assert_lexicon(int condition);
 
 typedef enum {
     AST_INT,
+    AST_EQ,
+    AST_NEQ,
+    AST_LT,
+    AST_GT,
+    AST_LEQ,
+    AST_GEQ,
     AST_LSHIFT,
     AST_RSHIFT,
     AST_ADD,
@@ -61,6 +73,8 @@ typedef struct _Ast {
 
 Ast* parse(Vector* tokens);
 Ast* parse_expr(Vector* tokens, size_t* pos);
+Ast* parse_equality_expr(Vector* tokens, size_t* pos);
+Ast* parse_relational_expr(Vector* tokens, size_t* pos);
 Ast* parse_shift_expr(Vector* tokens, size_t* pos);
 Ast* parse_additive_expr(Vector* tokens, size_t* pos);
 Ast* parse_multiplicative_expr(Vector* tokens, size_t* pos);
@@ -111,14 +125,34 @@ Token* read_token(FILE* file_ptr) {
 
     char snd = '\0';
     switch (fst) {
+        case '=':
+            snd = fgetc(file_ptr);
+            if (snd == '=') return token_new(TOKEN_DBL_EQ);
+            break;
+        case '!':
+            snd = fgetc(file_ptr);
+            if (snd == '=') return token_new(TOKEN_EXCL_EQ);
+            break;
         case '<':
             snd = fgetc(file_ptr);
-            assert_lexicon(snd == '<');
-            return token_new(TOKEN_DBL_LANGLE);
+            if (snd == '<') {
+                return token_new(TOKEN_DBL_LANGLE);
+            } else if (snd == '=') {
+                return token_new(TOKEN_LANGLE_EQ);
+            } else {
+                ungetc(snd, file_ptr);
+                return token_new(TOKEN_LANGLE);
+            }
         case '>':
             snd = fgetc(file_ptr);
-            assert_lexicon(snd == '>');
-            return token_new(TOKEN_DBL_RANGLE);
+            if (snd == '>') {
+                return token_new(TOKEN_DBL_RANGLE);
+            } else if (snd == '=') {
+                return token_new(TOKEN_RANGLE_EQ);
+            } else {
+                ungetc(snd, file_ptr);
+                return token_new(TOKEN_RANGLE);
+            }
         case '+':
             return token_new(TOKEN_PLUS);
         case '-':
@@ -136,9 +170,9 @@ Token* read_token(FILE* file_ptr) {
         case EOF:
             return token_new(TOKEN_EOF);
         default:
-            assert_lexicon(0);
             break;
     }
+    assert_lexicon(0);
 }
 
 Token* read_token_int(FILE* file_ptr) {
@@ -188,7 +222,81 @@ Ast* parse(Vector* tokens) {
 }
 
 Ast* parse_expr(Vector* tokens, size_t* pos) {
-    return parse_shift_expr(tokens, pos);
+    return parse_equality_expr(tokens, pos);
+}
+
+Ast* parse_equality_expr(Vector* tokens, size_t* pos) {
+    Ast* ast = parse_relational_expr(tokens, pos);
+    Ast* lhs = NULL;
+    Ast* rhs = NULL;
+
+    while (1) {
+        Token* token = (Token*)vector_at(tokens, *pos);
+        (*pos)++;
+        switch (token->type) {
+            case TOKEN_DBL_EQ:
+                lhs = ast;
+                rhs = parse_relational_expr(tokens, pos);
+                ast = ast_new(AST_EQ);
+                ast->lhs = lhs;
+                ast->rhs = rhs;
+                break;
+            case TOKEN_EXCL_EQ:
+                lhs = ast;
+                rhs = parse_relational_expr(tokens, pos);
+                ast = ast_new(AST_NEQ);
+                ast->lhs = lhs;
+                ast->rhs = rhs;
+                break;
+            default:
+                (*pos)--;
+                return ast;
+        }
+    }
+}
+
+Ast* parse_relational_expr(Vector* tokens, size_t* pos) {
+    Ast* ast = parse_shift_expr(tokens, pos);
+    Ast* lhs = NULL;
+    Ast* rhs = NULL;
+
+    while (1) {
+        Token* token = (Token*)vector_at(tokens, *pos);
+        (*pos)++;
+        switch (token->type) {
+            case TOKEN_LANGLE:
+                lhs = ast;
+                rhs = parse_shift_expr(tokens, pos);
+                ast = ast_new(AST_LT);
+                ast->lhs = lhs;
+                ast->rhs = rhs;
+                break;
+            case TOKEN_RANGLE:
+                lhs = ast;
+                rhs = parse_shift_expr(tokens, pos);
+                ast = ast_new(AST_GT);
+                ast->lhs = lhs;
+                ast->rhs = rhs;
+                break;
+            case TOKEN_LANGLE_EQ:
+                lhs = ast;
+                rhs = parse_shift_expr(tokens, pos);
+                ast = ast_new(AST_LEQ);
+                ast->lhs = lhs;
+                ast->rhs = rhs;
+                break;
+            case TOKEN_RANGLE_EQ:
+                lhs = ast;
+                rhs = parse_shift_expr(tokens, pos);
+                ast = ast_new(AST_GEQ);
+                ast->lhs = lhs;
+                ast->rhs = rhs;
+                break;
+            default:
+                (*pos)--;
+                return ast;
+        }
+    }
 }
 
 Ast* parse_shift_expr(Vector* tokens, size_t* pos) {
@@ -361,6 +469,54 @@ void print_code(Ast* ast) {
     print_code(ast->rhs);
 
     switch (ast->type) {
+        case AST_EQ:
+            fprintf(stdout, "\tpop %%rdi\n");
+            fprintf(stdout, "\tpop %%rax\n");
+            fprintf(stdout, "\tcmp %%edi, %%eax\n");
+            fprintf(stdout, "\tsete %%al\n");
+            fprintf(stdout, "\tmovzb %%al, %%eax\n");
+            fprintf(stdout, "\tpush %%rax\n");
+            break;
+        case AST_NEQ:
+            fprintf(stdout, "\tpop %%rdi\n");
+            fprintf(stdout, "\tpop %%rax\n");
+            fprintf(stdout, "\tcmp %%edi, %%eax\n");
+            fprintf(stdout, "\tsetne %%al\n");
+            fprintf(stdout, "\tmovzb %%al, %%eax\n");
+            fprintf(stdout, "\tpush %%rax\n");
+            break;
+        case AST_LT:
+            fprintf(stdout, "\tpop %%rdi\n");
+            fprintf(stdout, "\tpop %%rax\n");
+            fprintf(stdout, "\tcmp %%edi, %%eax\n");
+            fprintf(stdout, "\tsetl %%al\n");
+            fprintf(stdout, "\tmovzb %%al, %%eax\n");
+            fprintf(stdout, "\tpush %%rax\n");
+            break;
+        case AST_GT:
+            fprintf(stdout, "\tpop %%rdi\n");
+            fprintf(stdout, "\tpop %%rax\n");
+            fprintf(stdout, "\tcmp %%edi, %%eax\n");
+            fprintf(stdout, "\tsetg %%al\n");
+            fprintf(stdout, "\tmovzb %%al, %%eax\n");
+            fprintf(stdout, "\tpush %%rax\n");
+            break;
+        case AST_LEQ:
+            fprintf(stdout, "\tpop %%rdi\n");
+            fprintf(stdout, "\tpop %%rax\n");
+            fprintf(stdout, "\tcmp %%edi, %%eax\n");
+            fprintf(stdout, "\tsetle %%al\n");
+            fprintf(stdout, "\tmovzb %%al, %%eax\n");
+            fprintf(stdout, "\tpush %%rax\n");
+            break;
+        case AST_GEQ:
+            fprintf(stdout, "\tpop %%rdi\n");
+            fprintf(stdout, "\tpop %%rax\n");
+            fprintf(stdout, "\tcmp %%edi, %%eax\n");
+            fprintf(stdout, "\tsetge %%al\n");
+            fprintf(stdout, "\tmovzb %%al, %%eax\n");
+            fprintf(stdout, "\tpush %%rax\n");
+            break;
         case AST_LSHIFT:
             fprintf(stdout, "\tpop %%rcx\n");
             fprintf(stdout, "\tpop %%rax\n");
