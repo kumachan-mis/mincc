@@ -6,7 +6,7 @@
 
 
 void* safe_malloc(size_t size);
-void* safe_realloc(void *ptr, size_t new_size);
+void* safe_realloc(void* ptr, size_t new_size);
 
 
 #endif  // _MINCC_MEMORY_H_
