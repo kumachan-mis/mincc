@@ -37,4 +37,8 @@ test_mincc "100%7+22%6"  6
 test_mincc "(1+2)*3"             9
 test_mincc "(6-3+1)*(9-6+7-2)"  32
 test_mincc "(4*1)*(4/3)"         4
+
+test_mincc "+1+6"    7
+test_mincc "-5+7*5" 30
+test_mincc "+5+-5"   0
 echo "OK"
