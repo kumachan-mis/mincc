@@ -42,4 +42,9 @@ test_mincc "+ 1+6  "      7
 test_mincc "-5+7*5"      30
 test_mincc "+5 + -5"      0
 test_mincc "+10 + (-8)"   2
+
+test_mincc "1 << 3"          8
+test_mincc "10 + (-1 <<2)"   6
+test_mincc "9 >> 1"          4
+test_mincc "23 + 7*(-6 >>1)" 2
 echo "OK"

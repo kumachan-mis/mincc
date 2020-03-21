@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
-#include <assert.h>
 
 #include "mincc_vector.h"
 #include "mincc_memory.h"
@@ -14,6 +13,8 @@ typedef union {
 
 typedef enum {
     TOKEN_INT,
+    TOKEN_DBL_LANGLE,
+    TOKEN_DBL_RANGLE,
     TOKEN_PLUS,
     TOKEN_MINUS,
     TOKEN_ASTERISK,
@@ -35,10 +36,13 @@ Token* read_token_int(FILE* file_ptr);
 void skip_spaces(FILE* file_ptr);
 Token* token_new(TokenType type);
 void tokens_delete(Vector* tokens);
+void assert_lexicon(int condition);
 
 
 typedef enum {
     AST_INT,
+    AST_LSHIFT,
+    AST_RSHIFT,
     AST_ADD,
     AST_SUB,
     AST_MUL,
@@ -57,12 +61,14 @@ typedef struct _Ast {
 
 Ast* parse(Vector* tokens);
 Ast* parse_expr(Vector* tokens, size_t* pos);
+Ast* parse_shift_expr(Vector* tokens, size_t* pos);
 Ast* parse_additive_expr(Vector* tokens, size_t* pos);
 Ast* parse_multiplicative_expr(Vector* tokens, size_t* pos);
 Ast* parse_unary_expr(Vector* tokens, size_t* pos);
 Ast* parse_primary_expr(Vector* tokens, size_t* pos);
 Ast* ast_new(AstType type);
 Ast* ast_delete(Ast* ast);
+void assert_syntax(int condition);
 
 
 void print_code(Ast* ast);
@@ -97,14 +103,22 @@ Vector* tokenize(FILE* file_ptr) {
 }
 
 Token* read_token(FILE* file_ptr) {
-    char c = fgetc(file_ptr);
-    if (isdigit(c)) {
-        ungetc(c, file_ptr);
+    char fst = fgetc(file_ptr);
+    if (isdigit(fst)) {
+        ungetc(fst, file_ptr);
         return read_token_int(file_ptr);
     }
 
-    Token* token = (Token*)safe_malloc(sizeof(Token));
-    switch (c) {
+    char snd = '\0';
+    switch (fst) {
+        case '<':
+            snd = fgetc(file_ptr);
+            assert_lexicon(snd == '<');
+            return token_new(TOKEN_DBL_LANGLE);
+        case '>':
+            snd = fgetc(file_ptr);
+            assert_lexicon(snd == '>');
+            return token_new(TOKEN_DBL_RANGLE);
         case '+':
             return token_new(TOKEN_PLUS);
         case '-':
@@ -119,10 +133,12 @@ Token* read_token(FILE* file_ptr) {
             return token_new(TOKEN_LPAREN);
         case ')':
             return token_new(TOKEN_RPAREN);
-        default:
+        case EOF:
             return token_new(TOKEN_EOF);
+        default:
+            assert_lexicon(0);
+            break;
     }
-    return token;
 }
 
 Token* read_token_int(FILE* file_ptr) {
@@ -160,13 +176,49 @@ void tokens_delete(Vector* tokens) {
     vector_delete(tokens);
 }
 
+void assert_lexicon(int condition) {
+    if (condition) return;
+    fprintf(stderr, "Error: fail to analyze lexicon\n");
+    exit(1);
+}
+
 Ast* parse(Vector* tokens) {
     size_t pos = 0;
     return parse_expr(tokens, &pos);
 }
 
 Ast* parse_expr(Vector* tokens, size_t* pos) {
-    return parse_additive_expr(tokens, pos);
+    return parse_shift_expr(tokens, pos);
+}
+
+Ast* parse_shift_expr(Vector* tokens, size_t* pos) {
+    Ast* ast = parse_additive_expr(tokens, pos);
+    Ast* lhs = NULL;
+    Ast* rhs = NULL;
+
+    while (1) {
+        Token* token = (Token*)vector_at(tokens, *pos);
+        (*pos)++;
+        switch (token->type) {
+            case TOKEN_DBL_LANGLE:
+                lhs = ast;
+                rhs = parse_additive_expr(tokens, pos);
+                ast = ast_new(AST_LSHIFT);
+                ast->lhs = lhs;
+                ast->rhs = rhs;
+                break;
+            case TOKEN_DBL_RANGLE:
+                lhs = ast;
+                rhs = parse_additive_expr(tokens, pos);
+                ast = ast_new(AST_RSHIFT);
+                ast->lhs = lhs;
+                ast->rhs = rhs;
+                break;
+            default:
+                (*pos)--;
+                return ast;
+        }
+    }
 }
 
 Ast* parse_additive_expr(Vector* tokens, size_t* pos) {
@@ -273,11 +325,10 @@ Ast* parse_primary_expr(Vector* tokens, size_t* pos) {
             ast = parse_expr(tokens, pos);
             token = (Token*)vector_at(tokens, *pos);
             (*pos)++;
-            assert(token->type == TOKEN_RPAREN);
+            assert_syntax(token->type == TOKEN_RPAREN);
             break;
         default:
-            fprintf(stderr, "Error: fail to parse expression\n");
-            exit(1);
+            assert_syntax(0);
             break;
     }
     return ast;
@@ -297,6 +348,12 @@ Ast* ast_delete(Ast* ast) {
     free(ast);
 }
 
+void assert_syntax(int condition) {
+    if (condition) return;
+    fprintf(stderr, "Error: fail to parse input\n");
+    exit(1);
+}
+
 void print_code(Ast* ast) {
     if (ast == NULL) return;
 
@@ -304,6 +361,18 @@ void print_code(Ast* ast) {
     print_code(ast->rhs);
 
     switch (ast->type) {
+        case AST_LSHIFT:
+            fprintf(stdout, "\tpop %%rcx\n");
+            fprintf(stdout, "\tpop %%rax\n");
+            fprintf(stdout, "\tsal %%cl, %%eax\n");
+            fprintf(stdout, "\tpush %%rax\n");
+            break;
+        case AST_RSHIFT:
+            fprintf(stdout, "\tpop %%rcx\n");
+            fprintf(stdout, "\tpop %%rax\n");
+            fprintf(stdout, "\tsar %%cl, %%eax\n");
+            fprintf(stdout, "\tpush %%rax\n");
+            break;
         case AST_ADD:
             fprintf(stdout, "\tpop %%rdi\n");
             fprintf(stdout, "\tpop %%rax\n");
