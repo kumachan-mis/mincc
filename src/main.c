@@ -19,6 +19,8 @@ typedef enum {
     TOKEN_ASTERISK,
     TOKEN_SLASH,
     TOKEN_PERCENT,
+    TOKEN_LPAREN,
+    TOKEN_RPAREN,
     TOKEN_EOF
 } TokenType;
 
@@ -50,7 +52,8 @@ typedef struct _Ast {
     struct _Ast *rhs;
 } Ast;
 
-Ast* parse_expr(Vector* tokens);
+Ast* parse(Vector* tokens);
+Ast* parse_expr(Vector* tokens, size_t* pos);
 Ast* parse_primary_expr(Vector* tokens, size_t* pos);
 Ast* parse_additive_expr(Vector* tokens, size_t* pos);
 Ast* parse_multiplicative_expr(Vector* tokens, size_t* pos);
@@ -66,7 +69,7 @@ int main(int argc, char* argv[]) {
     fprintf(stdout, "_main:\n");
 
     Vector* tokens = tokenize(stdin);
-    Ast* ast = parse_expr(tokens);
+    Ast* ast = parse(tokens);
     print_code(ast);
 
     printf("\tpop %%rax\n");
@@ -107,6 +110,10 @@ Token* read_token(FILE* file_ptr) {
             return token_new(TOKEN_SLASH);
         case '%':
             return token_new(TOKEN_PERCENT);
+        case '(':
+            return token_new(TOKEN_LPAREN);
+        case ')':
+            return token_new(TOKEN_RPAREN);
         default:
             return token_new(TOKEN_EOF);
     }
@@ -138,17 +145,34 @@ void tokens_delete(Vector* tokens) {
     vector_delete(tokens);
 }
 
-Ast* parse_expr(Vector* tokens) {
+Ast* parse(Vector* tokens) {
     size_t pos = 0;
-    return parse_additive_expr(tokens, &pos);
+    return parse_expr(tokens, &pos);
+}
+
+Ast* parse_expr(Vector* tokens, size_t* pos) {
+    return parse_additive_expr(tokens, pos);
 }
 
 Ast* parse_primary_expr(Vector* tokens, size_t* pos) {
-    Ast* ast = ast_new(AST_INT);
+    Ast* ast;
     Token* token = (Token*)vector_at(tokens, *pos);
     (*pos)++;
-    assert(token->type == TOKEN_INT);
-    ast->value.value_int = token->value.value_int;
+    switch (token->type) {
+        case TOKEN_INT:
+            ast = ast_new(AST_INT);
+            ast->value.value_int = token->value.value_int;
+            break;
+        case TOKEN_LPAREN:
+            ast = parse_expr(tokens, pos);
+            token = (Token*)vector_at(tokens, *pos);
+            (*pos)++;
+            assert(token->type == TOKEN_RPAREN);
+            break;
+        default:
+            exit(1);
+            break;
+    }
     return ast;
 }
 
