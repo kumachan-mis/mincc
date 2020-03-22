@@ -1,18 +1,23 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <stdarg.h>
 
 #include "mincc_vector.h"
+#include "mincc_map.h"
 #include "mincc_memory.h"
 
 
 typedef union {
     int value_int;
+    char* value_ident;
 } Value;
 
 
 typedef enum {
     TOKEN_INT,
+    TOKEN_IDENT,
+    TOKEN_EQ,
     TOKEN_DBL_AND,
     TOKEN_DBL_BAR,
     TOKEN_EXCL,
@@ -35,6 +40,7 @@ typedef enum {
     TOKEN_PERCENT,
     TOKEN_LPAREN,
     TOKEN_RPAREN,
+    TOKEN_SEMICOLON,
     TOKEN_EOF
 } TokenType;
 
@@ -46,6 +52,7 @@ typedef struct {
 Vector* tokenize(FILE* file_ptr);
 Token* read_token(FILE* file_ptr);
 Token* read_token_int(FILE* file_ptr);
+Token* read_token_ident(FILE* file_ptr);
 void skip_spaces(FILE* file_ptr);
 Token* token_new(TokenType type);
 void tokens_delete(Vector* tokens);
@@ -55,6 +62,8 @@ void assert_lexicon(int condition);
 
 typedef enum {
     AST_INT,
+    AST_VAR,
+    AST_ASSIGN,
     AST_LAND,
     AST_LOR,
     AST_LNOT,
@@ -86,8 +95,10 @@ typedef struct _Ast {
     struct _Ast *rhs;
 } Ast;
 
-Ast* parse(Vector* tokens);
+Vector* parse(Vector* tokens);
+Ast* parse_statement(Vector* tokens, size_t* pos);
 Ast* parse_expr(Vector* tokens, size_t* pos);
+Ast* parse_assignment_expr(Vector* tokens, size_t* pos);
 Ast* parse_logical_or_expr(Vector* tokens, size_t* pos);
 Ast* parse_logical_and_expr(Vector* tokens, size_t* pos);
 Ast* parse_or_expr(Vector* tokens, size_t* pos);
@@ -101,25 +112,33 @@ Ast* parse_multiplicative_expr(Vector* tokens, size_t* pos);
 Ast* parse_unary_expr(Vector* tokens, size_t* pos);
 Ast* parse_primary_expr(Vector* tokens, size_t* pos);
 Ast* ast_new(AstType type);
-Ast* ast_delete(Ast* ast);
+void ast_delete(Ast* ast);
+void asts_delete(Vector* asts);
 
 void assert_syntax(int condition);
 
 
 typedef struct {
     int num_labels;
+    int stack_offset;
+    Map* var_map;
+    Vector* codes;
 } CodeEnvironment;
 
-void print_code(Ast* ast);
-void gen_code(Ast* ast, CodeEnvironment* env, FILE* file_ptr);
-void gen_logical_expr_code(Ast* ast, CodeEnvironment* env, FILE* file_ptr);
-void gen_bitwise_expr_code(Ast* ast, CodeEnvironment* env, FILE* file_ptr);
-void gen_comparative_expr_code(Ast* ast, CodeEnvironment* env, FILE* file_ptr);
-void gen_shift_expr_code(Ast* ast, CodeEnvironment* env, FILE* file_ptr);
-void gen_arithmetical_expr_code(Ast* ast, CodeEnvironment* env, FILE* file_ptr);
-void gen_unary_expr_code(Ast* ast, CodeEnvironment* env, FILE* file_ptr);
-void gen_primary_expr_code(Ast* ast, CodeEnvironment* env, FILE* file_ptr);
+void print_code(Vector* asts);
+void put_code(FILE* file_ptr, Vector* codes);
 
+void gen_code(Ast* ast, CodeEnvironment* env);
+void gen_assignment_expr_code(Ast* ast, CodeEnvironment* env);
+void gen_logical_expr_code(Ast* ast, CodeEnvironment* env);
+void gen_bitwise_expr_code(Ast* ast, CodeEnvironment* env);
+void gen_comparative_expr_code(Ast* ast, CodeEnvironment* env);
+void gen_shift_expr_code(Ast* ast, CodeEnvironment* env);
+void gen_arithmetical_expr_code(Ast* ast, CodeEnvironment* env);
+void gen_unary_expr_code(Ast* ast, CodeEnvironment* env);
+void gen_primary_expr_code(Ast* ast, CodeEnvironment* env);
+
+int is_assignment_expr(AstType type);
 int is_logical_expr(AstType type);
 int is_bitwise_expr(AstType type);
 int is_comparative_expr(AstType type);
@@ -128,14 +147,16 @@ int is_arithmetical_expr(AstType type);
 int is_unary_expr(AstType type);
 int is_primary_expr(AstType type);
 
+void append_code(Vector* codes, char* format, ...);
+
 void assert_code_gen(int condition);
 
 
 int main(int argc, char* argv[]) {
     Vector* tokens = tokenize(stdin);
-    Ast* ast = parse(tokens);
-    print_code(ast);
-    ast_delete(ast);
+    Vector* asts = parse(tokens);
+    print_code(asts);
+    asts_delete(asts);
     tokens_delete(tokens);
     return 0;
 }
@@ -156,6 +177,9 @@ Token* read_token(FILE* file_ptr) {
     if (isdigit(fst)) {
         ungetc(fst, file_ptr);
         return read_token_int(file_ptr);
+    } else if (isalpha(fst) || fst == '_') {
+        ungetc(fst, file_ptr);
+        return read_token_ident(file_ptr);
     }
 
     char snd = '\0';
@@ -182,8 +206,12 @@ Token* read_token(FILE* file_ptr) {
             return token_new(TOKEN_TILDER);
         case '=':
             snd = fgetc(file_ptr);
-            if (snd == '=') return token_new(TOKEN_DBL_EQ);
-            break;
+            if (snd == '=') {
+                return token_new(TOKEN_DBL_EQ);
+            } else {
+                ungetc(snd, file_ptr);
+                return token_new(TOKEN_EQ);
+            }
         case '!':
             snd = fgetc(file_ptr);
             if (snd == '=') {
@@ -226,6 +254,8 @@ Token* read_token(FILE* file_ptr) {
             return token_new(TOKEN_LPAREN);
         case ')':
             return token_new(TOKEN_RPAREN);
+        case ';':
+            return token_new(TOKEN_SEMICOLON);
         case EOF:
             return token_new(TOKEN_EOF);
         default:
@@ -246,6 +276,30 @@ Token* read_token_int(FILE* file_ptr) {
     }
     Token* token = token_new(TOKEN_INT);
     token->value.value_int = value;
+    return token;
+}
+
+Token* read_token_ident(FILE* file_ptr) {
+    size_t len = 0, capacity = 2;
+    char* value = (char*)safe_malloc((capacity+1)*sizeof(char));
+    while(1) {
+        char c = fgetc(file_ptr);
+        if (!isalnum(c) && c != '_') {
+            ungetc(c, file_ptr);
+            break;
+        }
+        value[len] = c;
+        len++;
+        if (len == capacity) {
+            capacity *= 2;
+            value = (char*)safe_realloc(value, (capacity+1)*sizeof(char));
+        }
+    }
+    value[len] = '\0';
+    value = (char*)safe_realloc(value, (len+1)*sizeof(char));
+
+    Token* token = token_new(TOKEN_IDENT);
+    token->value.value_ident = value;
     return token;
 }
 
@@ -275,13 +329,56 @@ void assert_lexicon(int condition) {
     exit(1);
 }
 
-Ast* parse(Vector* tokens) {
+Vector* parse(Vector* tokens) {
+    Vector* asts = vector_new();
     size_t pos = 0;
-    return parse_expr(tokens, &pos);
+    while (1) {
+        Token* token = (Token*)vector_at(tokens, pos);
+        if (token->type == TOKEN_EOF) break;
+        Ast* ast = parse_statement(tokens, &pos);
+        if (ast != NULL) vector_push_back(asts, ast);
+    }
+    return asts;
+}
+
+Ast* parse_statement(Vector* tokens, size_t* pos) {
+    Token* token = (Token*)vector_at(tokens, *pos);
+    if (token->type == TOKEN_SEMICOLON) {
+        (*pos)++;
+        return NULL;
+    }
+
+    Ast* expr = parse_expr(tokens, pos);
+    token = (Token*)vector_at(tokens, *pos);
+    (*pos)++;
+    assert_syntax(token->type == TOKEN_SEMICOLON);
+    return expr;
 }
 
 Ast* parse_expr(Vector* tokens, size_t* pos) {
-    return parse_logical_or_expr(tokens, pos);
+    return parse_assignment_expr(tokens, pos);
+}
+
+Ast* parse_assignment_expr(Vector* tokens, size_t* pos) {
+    size_t pos_memo = *pos;
+    Ast* ast = parse_unary_expr(tokens, pos);
+    Ast* lhs = NULL;
+    Ast* rhs = NULL;
+
+    Token* token = (Token*)vector_at(tokens, *pos);
+    (*pos)++;
+    switch (token->type) {
+        case TOKEN_EQ:
+            lhs = ast;
+            rhs = parse_assignment_expr(tokens, pos);
+            ast = ast_new(AST_ASSIGN);
+            ast->lhs = lhs;
+            ast->rhs = rhs;
+            break;
+        default:
+            *pos = pos_memo;
+            return parse_logical_or_expr(tokens, pos);
+    }
 }
 
 Ast* parse_logical_or_expr(Vector* tokens, size_t* pos) {
@@ -613,6 +710,10 @@ Ast* parse_primary_expr(Vector* tokens, size_t* pos) {
             ast = ast_new(AST_INT);
             ast->value.value_int = token->value.value_int;
             break;
+        case TOKEN_IDENT:
+            ast = ast_new(AST_VAR);
+            ast->value.value_ident = token->value.value_ident;
+            break;
         case TOKEN_LPAREN:
             ast = parse_expr(tokens, pos);
             token = (Token*)vector_at(tokens, *pos);
@@ -634,10 +735,19 @@ Ast* ast_new(AstType type) {
     return ast;
 }
 
-Ast* ast_delete(Ast* ast) {
+void ast_delete(Ast* ast) {
     if (ast->lhs != NULL) ast_delete(ast->lhs);
     if (ast->rhs != NULL) ast_delete(ast->rhs);
     free(ast);
+}
+
+void asts_delete(Vector* asts) {
+    size_t i = 0, size = asts->size;
+    for (i = 0; i < size; i++) {
+        Ast* ast = (Ast*)vector_at(asts, i);
+        ast_delete(ast);
+    }
+    free(asts);
 }
 
 void assert_syntax(int condition) {
@@ -646,212 +756,283 @@ void assert_syntax(int condition) {
     exit(1);
 }
 
-void print_code(Ast* ast) {
-    if (ast == NULL) return;
+void print_code(Vector* asts) {
+    if (asts->size == 0) return;
 
     CodeEnvironment env;
     env.num_labels = 0;
+    env.stack_offset = 0;
+    env.var_map = map_new();
+    env.codes = vector_new();
 
-    fprintf(stdout, ".global _main\n");
-    fprintf(stdout, "_main:\n");
-    gen_code(ast, &env, stdout);
-    printf("\tpop %%rax\n");
-    printf("\tret\n");
+    size_t i = 0, size = asts->size;
+    for (i = 0; i < size; i++) {
+        gen_code(vector_at(asts, i), &env);
+        append_code(env.codes, "\tpop %%rax\n");
+    }
+
+    Vector* header_codes = vector_new();
+    append_code(header_codes, ".global _main\n");
+    append_code(header_codes, "_main:\n");
+    append_code(header_codes, "\tpush %%rbp\n");
+    append_code(header_codes, "\tmov %%rsp, %%rbp\n");
+    append_code(header_codes, "\tsub $%d, %%rsp\n", env.stack_offset);
+
+    Vector* footer_codes = vector_new();
+    append_code(footer_codes, "\tmov %%rbp, %%rsp\n");
+    append_code(footer_codes, "\tpop %%rbp\n");
+    append_code(footer_codes, "\tret\n");
+
+    put_code(stdout, header_codes);
+    put_code(stdout, env.codes);
+    put_code(stdout, footer_codes);
+
+    vector_delete(footer_codes);
+    vector_delete(header_codes);
+    vector_delete(env.codes);
+    map_delete(env.var_map);
 }
 
-void gen_code(Ast* ast, CodeEnvironment* env, FILE* file_ptr) {
+void put_code(FILE* file_ptr, Vector* codes) {
+    size_t i = 0, size = codes->size;
+    for (i = 0; i < size; i++) {
+        char* str = (char*)vector_at(codes, i);
+        fputs(str, file_ptr);
+    }
+}
+
+void gen_code(Ast* ast, CodeEnvironment* env) {
     AstType type = ast->type;
 
-    if (is_logical_expr(type)) {
-        gen_logical_expr_code(ast, env, file_ptr);
+    if (is_assignment_expr(type)) {
+        gen_assignment_expr_code(ast, env);
+    } else if (is_logical_expr(type)) {
+        gen_logical_expr_code(ast, env);
     } else if (is_bitwise_expr(type)) {
-        gen_bitwise_expr_code(ast, env, file_ptr);
+        gen_bitwise_expr_code(ast, env);
     } else if (is_comparative_expr(type)) {
-        gen_comparative_expr_code(ast, env, file_ptr);
+        gen_comparative_expr_code(ast, env);
     } else if (is_shift_expr(type)) {
-        gen_shift_expr_code(ast, env, file_ptr);
+        gen_shift_expr_code(ast, env);
     } else if (is_arithmetical_expr(type)) {
-        gen_arithmetical_expr_code(ast, env, file_ptr);
+        gen_arithmetical_expr_code(ast, env);
     } else if (is_unary_expr(type)) {
-        gen_unary_expr_code(ast, env, file_ptr);
+        gen_unary_expr_code(ast, env);
     } else if (is_primary_expr(type)) {
-        gen_primary_expr_code(ast, env, file_ptr);
+        gen_primary_expr_code(ast, env);
     } else  {
         assert_code_gen(0);
     }
 }
 
-void gen_logical_expr_code(Ast* ast, CodeEnvironment* env, FILE* file_ptr) {
+void gen_assignment_expr_code(Ast* ast, CodeEnvironment* env) {
+    gen_code(ast->rhs, env);
+    append_code(env->codes, "\tpop %%rax\n");
+
+    assert_code_gen(ast->lhs->type == AST_VAR);
+    char* ident = ast->lhs->value.value_ident;
+    int* offset_ptr = (int*)map_find(env->var_map, ident);
+    if (offset_ptr == NULL) {
+        env->stack_offset += 8;
+        offset_ptr = int_new(env->stack_offset);
+        map_insert(env->var_map, ident, offset_ptr);
+    }
+
+    switch (ast->type) {
+        case AST_ASSIGN:
+            break;
+        default:
+            assert_code_gen(0);
+    }
+
+    append_code(env->codes, "\tmov %%eax, -%d(%%rbp)\n", *offset_ptr);
+    append_code(env->codes, "\tpush %%rax\n");
+}
+
+void gen_logical_expr_code(Ast* ast, CodeEnvironment* env) {
     int exit_labno = env->num_labels; env->num_labels++;
 
-    gen_code(ast->lhs, env, file_ptr);
-    fprintf(file_ptr, "\tpop %%rax\n");
-    fprintf(file_ptr, "\tcmp $0, %%rax\n");
+    gen_code(ast->lhs, env);
+    append_code(env->codes, "\tpop %%rax\n");
+    append_code(env->codes, "\tcmp $0, %%rax\n");
 
     switch (ast->type) {
         case AST_LOR:
-            fprintf(file_ptr, "\tjne .L%d\n", exit_labno);
+            append_code(env->codes, "\tjne .L%d\n", exit_labno);
             break;
         case AST_LAND:
-            fprintf(file_ptr, "\tje .L%d\n", exit_labno);
+            append_code(env->codes, "\tje .L%d\n", exit_labno);
             break;
+        default:
+            assert_code_gen(0);
     }
 
-    gen_code(ast->rhs, env, file_ptr);
-    fprintf(file_ptr, "\tpop %%rax\n");
-    fprintf(file_ptr, "\tcmp $0, %%rax\n");
+    gen_code(ast->rhs, env);
+    append_code(env->codes, "\tpop %%rax\n");
+    append_code(env->codes, "\tcmp $0, %%rax\n");
 
-    fprintf(file_ptr, ".L%d:\n", exit_labno);
-    fprintf(file_ptr, "\tsetne %%al\n");
-    fprintf(file_ptr, "\tmovzb %%al, %%eax\n");
-    fprintf(file_ptr, "\tpush %%rax\n");
+    append_code(env->codes, ".L%d:\n", exit_labno);
+    append_code(env->codes, "\tsetne %%al\n");
+    append_code(env->codes, "\tmovzb %%al, %%eax\n");
+    append_code(env->codes, "\tpush %%rax\n");
 }
 
-void gen_bitwise_expr_code(Ast* ast, CodeEnvironment* env, FILE* file_ptr) {
-    gen_code(ast->lhs, env, file_ptr);
-    gen_code(ast->rhs, env, file_ptr);
+void gen_bitwise_expr_code(Ast* ast, CodeEnvironment* env) {
+    gen_code(ast->lhs, env);
+    gen_code(ast->rhs, env);
 
-    fprintf(file_ptr, "\tpop %%rdi\n");
-    fprintf(file_ptr, "\tpop %%rax\n");
+    append_code(env->codes, "\tpop %%rdi\n");
+    append_code(env->codes, "\tpop %%rax\n");
     switch (ast->type) {
         case AST_OR:
-            fprintf(file_ptr, "\tor %%edi, %%eax\n");
+            append_code(env->codes, "\tor %%edi, %%eax\n");
             break;
         case AST_XOR:
-            fprintf(file_ptr, "\txor %%edi, %%eax\n");
+            append_code(env->codes, "\txor %%edi, %%eax\n");
             break;
         case AST_AND:
-            fprintf(file_ptr, "\tand %%edi, %%eax\n");
+            append_code(env->codes, "\tand %%edi, %%eax\n");
             break;
         default:
             assert_code_gen(0);
     }
-    fprintf(file_ptr, "\tpush %%rax\n");
+    append_code(env->codes, "\tpush %%rax\n");
 }
 
-void gen_comparative_expr_code(Ast* ast, CodeEnvironment* env, FILE* file_ptr) {
-    gen_code(ast->lhs, env, file_ptr);
-    gen_code(ast->rhs, env, file_ptr);
+void gen_comparative_expr_code(Ast* ast, CodeEnvironment* env) {
+    gen_code(ast->lhs, env);
+    gen_code(ast->rhs, env);
 
-    fprintf(file_ptr, "\tpop %%rdi\n");
-    fprintf(file_ptr, "\tpop %%rax\n");
-    fprintf(file_ptr, "\tcmp %%edi, %%eax\n");
+    append_code(env->codes, "\tpop %%rdi\n");
+    append_code(env->codes, "\tpop %%rax\n");
+    append_code(env->codes, "\tcmp %%edi, %%eax\n");
     switch (ast->type) {
         case AST_EQ:
-            fprintf(file_ptr, "\tsete %%al\n");
+            append_code(env->codes, "\tsete %%al\n");
             break;
         case AST_NEQ:
-            fprintf(file_ptr, "\tsetne %%al\n");
+            append_code(env->codes, "\tsetne %%al\n");
             break;
         case AST_LT:
-            fprintf(file_ptr, "\tsetl %%al\n");
+            append_code(env->codes, "\tsetl %%al\n");
             break;
         case AST_GT:
-            fprintf(file_ptr, "\tsetg %%al\n");
+            append_code(env->codes, "\tsetg %%al\n");
             break;
         case AST_LEQ:
-            fprintf(file_ptr, "\tsetle %%al\n");
+            append_code(env->codes, "\tsetle %%al\n");
             break;
         case AST_GEQ:
-            fprintf(file_ptr, "\tsetge %%al\n");
+            append_code(env->codes, "\tsetge %%al\n");
             break;
         default:
             assert_code_gen(0);
     }
-    fprintf(file_ptr, "\tmovzb %%al, %%eax\n");
-    fprintf(file_ptr, "\tpush %%rax\n");
+    append_code(env->codes, "\tmovzb %%al, %%eax\n");
+    append_code(env->codes, "\tpush %%rax\n");
 }
 
-void gen_shift_expr_code(Ast* ast, CodeEnvironment* env, FILE* file_ptr) {
-    gen_code(ast->lhs, env, file_ptr);
-    gen_code(ast->rhs, env, file_ptr);
+void gen_shift_expr_code(Ast* ast, CodeEnvironment* env) {
+    gen_code(ast->lhs, env);
+    gen_code(ast->rhs, env);
 
-    fprintf(file_ptr, "\tpop %%rcx\n");
-    fprintf(file_ptr, "\tpop %%rax\n");
+    append_code(env->codes, "\tpop %%rcx\n");
+    append_code(env->codes, "\tpop %%rax\n");
     switch (ast->type) {
         case AST_LSHIFT:
-            fprintf(file_ptr, "\tsal %%cl, %%eax\n");
+            append_code(env->codes, "\tsal %%cl, %%eax\n");
             break;
         case AST_RSHIFT:
-            fprintf(file_ptr, "\tsar %%cl, %%eax\n");
+            append_code(env->codes, "\tsar %%cl, %%eax\n");
             break;
         default:
             assert_code_gen(0);
     }
-    fprintf(file_ptr, "\tpush %%rax\n");
+    append_code(env->codes, "\tpush %%rax\n");
 }
 
-void gen_arithmetical_expr_code(Ast* ast, CodeEnvironment* env, FILE* file_ptr) {
-    gen_code(ast->lhs, env, file_ptr);
-    gen_code(ast->rhs, env, file_ptr);
+void gen_arithmetical_expr_code(Ast* ast, CodeEnvironment* env) {
+    gen_code(ast->lhs, env);
+    gen_code(ast->rhs, env);
 
-    fprintf(file_ptr, "\tpop %%rdi\n");
-    fprintf(file_ptr, "\tpop %%rax\n");
+    append_code(env->codes, "\tpop %%rdi\n");
+    append_code(env->codes, "\tpop %%rax\n");
     switch (ast->type) {
         case AST_ADD:
-            fprintf(file_ptr, "\tadd %%edi, %%eax\n");
-            fprintf(file_ptr, "\tpush %%rax\n");
+            append_code(env->codes, "\tadd %%edi, %%eax\n");
+            append_code(env->codes, "\tpush %%rax\n");
             break;
         case AST_SUB:
-            fprintf(file_ptr, "\tsub %%edi, %%eax\n");
-            fprintf(file_ptr, "\tpush %%rax\n");
+            append_code(env->codes, "\tsub %%edi, %%eax\n");
+            append_code(env->codes, "\tpush %%rax\n");
             break;
         case AST_MUL:
-            fprintf(file_ptr, "\timul %%edi, %%eax\n");
-            fprintf(file_ptr, "\tpush %%rax\n");
+            append_code(env->codes, "\timul %%edi, %%eax\n");
+            append_code(env->codes, "\tpush %%rax\n");
             break;
         case AST_DIV:
-            fprintf(file_ptr, "\tcltd\n");
-            fprintf(file_ptr, "\tidiv %%edi\n");
-            fprintf(file_ptr, "\tpush %%rax\n");
+            append_code(env->codes, "\tcltd\n");
+            append_code(env->codes, "\tidiv %%edi\n");
+            append_code(env->codes, "\tpush %%rax\n");
             break;
         case AST_MOD:
-            fprintf(file_ptr, "\tcltd\n");
-            fprintf(file_ptr, "\tidiv %%edi\n");
-            fprintf(file_ptr, "\tpush %%rdx\n");
+            append_code(env->codes, "\tcltd\n");
+            append_code(env->codes, "\tidiv %%edi\n");
+            append_code(env->codes, "\tpush %%rdx\n");
             break;
         default:
             assert_code_gen(0);
     }
 }
 
-void gen_unary_expr_code(Ast* ast, CodeEnvironment* env, FILE* file_ptr) {
-    gen_code(ast->lhs, env, file_ptr);
+void gen_unary_expr_code(Ast* ast, CodeEnvironment* env) {
+    gen_code(ast->lhs, env);
 
     switch (ast->type) {
         case AST_POSI:
             /* Do Nothing */
             break;
         case AST_NEGA:
-            fprintf(file_ptr, "\tpop %%rax\n");
-            fprintf(file_ptr, "\tneg %%eax\n");
-            fprintf(file_ptr, "\tpush %%rax\n");
+            append_code(env->codes, "\tpop %%rax\n");
+            append_code(env->codes, "\tneg %%eax\n");
+            append_code(env->codes, "\tpush %%rax\n");
             break;
         case AST_NOT:
-            fprintf(file_ptr, "\tpop %%rax\n");
-            fprintf(file_ptr, "\tnot %%eax\n");
-            fprintf(file_ptr, "\tpush %%rax\n");
+            append_code(env->codes, "\tpop %%rax\n");
+            append_code(env->codes, "\tnot %%eax\n");
+            append_code(env->codes, "\tpush %%rax\n");
             break;
         case AST_LNOT:
-            fprintf(file_ptr, "\tpop %%rax\n");
-            fprintf(file_ptr, "\tcmp $0, %%eax\n");
-            fprintf(file_ptr, "\tsete %%al\n");
-            fprintf(file_ptr, "\tmovzb %%al, %%eax\n");
-            fprintf(file_ptr, "\tpush %%rax\n");
+            append_code(env->codes, "\tpop %%rax\n");
+            append_code(env->codes, "\tcmp $0, %%eax\n");
+            append_code(env->codes, "\tsete %%al\n");
+            append_code(env->codes, "\tmovzb %%al, %%eax\n");
+            append_code(env->codes, "\tpush %%rax\n");
             break;
         default:
             assert_code_gen(0);
     }
 }
 
-void gen_primary_expr_code(Ast* ast, CodeEnvironment* env, FILE* file_ptr) {
+void gen_primary_expr_code(Ast* ast, CodeEnvironment* env) {
     switch (ast->type) {
         case AST_INT:
-            fprintf(file_ptr, "\tpush $%d\n", ast->value.value_int);
+            append_code(env->codes, "\tpush $%d\n", ast->value.value_int);
             break;
+        case AST_VAR: {
+            int* offset_ptr = (int*)map_find(env->var_map, ast->value.value_ident);
+            assert_code_gen(offset_ptr != NULL);
+            append_code(env->codes, "\tmov -%d(%%rbp), %%eax\n", *offset_ptr);
+            append_code(env->codes, "\tpush %%rax\n");
+        }
+        break;
         default:
             assert_code_gen(0);
     }
+}
+
+int is_assignment_expr(AstType type) {
+    return type == AST_ASSIGN;
 }
 
 int is_logical_expr(AstType type) {
@@ -883,7 +1064,17 @@ int is_unary_expr(AstType type) {
 }
 
 int is_primary_expr(AstType type) {
-    return type == AST_INT;
+    return type == AST_INT || type == AST_VAR;
+}
+
+void append_code(Vector* codes, char* format, ...) {
+    char buffer[511];
+    va_list list;
+    va_start(list, format);
+    int success = vsnprintf(buffer, 510, format, list);
+    va_end(list);
+    assert_code_gen(success);
+    vector_push_back(codes, str_new(buffer));
 }
 
 void assert_code_gen(int condition) {

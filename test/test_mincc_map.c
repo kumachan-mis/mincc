@@ -4,32 +4,26 @@
 #include "../src/mincc_memory.h"
 
 
-int* safe_malloc_int(int value) {
-    int* ptr = (int*)safe_malloc(sizeof(int));
-    *ptr = value;
-    return ptr;
-}
-
 int main() {
     Map* map = map_new();
     int* ptr = NULL;
 
-    map_insert(map, "abc", safe_malloc_int(5));
+    map_insert(map, "abc", int_new(5));
     ptr = (int*)map_find(map, "abc");
     assert(*ptr == 5);
     assert(map->size == 1);
 
-    map_insert(map, "xyz", safe_malloc_int(-3));
+    map_insert(map, "xyz", int_new(-3));
     ptr = (int*)map_find(map, "xyz");
     assert(*ptr == -3);
     assert(map->size == 2);
 
-    map_insert(map, "abc", safe_malloc_int(2));
+    map_insert(map, "abc", int_new(2));
     ptr = (int*)map_find(map, "abc");
     assert(*ptr == 2);
     assert(map->size == 2);
 
-    map_insert(map, "pqr", safe_malloc_int(7));
+    map_insert(map, "pqr", int_new(7));
     ptr = (int*)map_find(map, "pqr");
     assert(*ptr == 7);
     assert(map->size == 3);

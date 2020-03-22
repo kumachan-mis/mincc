@@ -8,7 +8,6 @@
 
 Map* map_extend(Map* map);
 size_t hash_function(map_key_t key, size_t capacity);
-char* key_new(char* key);
 int has_key(map_item_t item, char* key);
 
 
@@ -18,7 +17,7 @@ Map* map_new() {
     map->data = (map_item_t*)safe_malloc(initial_capacity*sizeof(map_item_t));
     map->size = 0;
     map->capacity = initial_capacity;
-    size_t i;
+    size_t i = 0;
     for (i = 0; i < initial_capacity; i++) {
         map->data[i].key = NULL;
         map->data[i].value = NULL;
@@ -41,7 +40,7 @@ void map_insert(Map* map, map_key_t key, map_value_t value) {
     }
 
     if (!found) {
-        map->data[hash_index].key = key_new(key);
+        map->data[hash_index].key = str_new(key);
         map->data[hash_index].value = value;
         map->data[hash_index].state = Filled;
         map->size++;
@@ -85,7 +84,7 @@ Map* map_extend(Map* map) {
     map->data = (map_item_t*)safe_malloc(new_capacity * sizeof(map_item_t));
     map->capacity = new_capacity;
 
-    size_t i;
+    size_t i = 0;
     for (i = 0; i < new_capacity; i++) {
         map->data[i].key = NULL;
         map->data[i].value = NULL;
@@ -108,18 +107,12 @@ Map* map_extend(Map* map) {
 
 size_t hash_function(map_key_t key, size_t capacity) {
     size_t a = 31415, b = 27183, hash = 0; 
-    char* p;
+    char* p = key;
     for (p = key; *p != '\0'; p++) {
         hash = (a*hash + *p) % capacity;
         a = a * b % (capacity - 1);
     }
     return hash;
-}
-
-char* key_new(char* str) {
-    char* ret = (char*)safe_malloc((strlen(str) + 1) * sizeof(char));
-    strcpy(ret, str);
-    return ret;
 }
 
 int has_key(map_item_t item, char* key) {
