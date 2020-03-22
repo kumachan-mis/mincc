@@ -132,19 +132,11 @@ void assert_code_gen(int condition);
 
 
 int main(int argc, char* argv[]) {
-    fprintf(stdout, ".global _main\n");
-    fprintf(stdout, "_main:\n");
-
     Vector* tokens = tokenize(stdin);
     Ast* ast = parse(tokens);
     print_code(ast);
-
-    printf("\tpop %%rax\n");
-    printf("\tret\n");
-
     ast_delete(ast);
     tokens_delete(tokens);
-
     return 0;
 }
 
@@ -659,7 +651,12 @@ void print_code(Ast* ast) {
 
     CodeEnvironment env;
     env.num_labels = 0;
+
+    fprintf(stdout, ".global _main\n");
+    fprintf(stdout, "_main:\n");
     gen_code(ast, &env, stdout);
+    printf("\tpop %%rax\n");
+    printf("\tret\n");
 }
 
 void gen_code(Ast* ast, CodeEnvironment* env, FILE* file_ptr) {

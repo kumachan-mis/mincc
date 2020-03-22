@@ -4,6 +4,9 @@
 #include "mincc_memory.h"
 
 
+Vector* vector_extend(Vector* vector);
+
+
 Vector* vector_new() {
     Vector* vector = safe_malloc(sizeof(Vector));
     vector->data = NULL;
@@ -26,9 +29,7 @@ void vector_push_back(Vector* vector, vector_item_t item) {
         vector->capacity = 1;
     } else {
         if (vector->size == vector->capacity) {
-            vector->data = (vector_item_t*)safe_realloc(
-                vector->data, (2*vector->capacity) * sizeof(vector_item_t));
-            vector->capacity *= 2;
+            vector = vector_extend(vector);
         }
         vector->data[vector->size] = item;
         vector->size++;
@@ -42,9 +43,19 @@ vector_item_t vector_at(Vector* vector, size_t index) {
 
 void vector_delete(Vector* vector) {
     size_t capacity = vector->capacity;
-    for (size_t i = 0; i < capacity; ++i) {
+    size_t i;
+    for (i = 0; i < capacity; ++i) {
         free(vector->data[i]);
     }
     free(vector->data);
     free(vector);
+}
+
+Vector* vector_extend(Vector* vector) {
+    size_t new_capacity = 2*vector->capacity;
+    vector->data = (vector_item_t*)safe_realloc(
+        vector->data, new_capacity * sizeof(vector_item_t)
+    );
+    vector->capacity = new_capacity;
+    return vector;
 }

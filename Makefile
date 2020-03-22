@@ -22,6 +22,10 @@ $(BUILD_DIR)/test_mincc_vector.out:\
 	$(BUILD_DIR)/test_mincc_vector.o $(BUILD_DIR)/mincc_vector.o $(BUILD_DIR)/mincc_memory.o
 	$(CC) $^ -o $@
 
+$(BUILD_DIR)/test_mincc_map.out:\
+	$(BUILD_DIR)/test_mincc_map.o $(BUILD_DIR)/mincc_map.o $(BUILD_DIR)/mincc_memory.o
+	$(CC) $^ -o $@
+
 $(BUILD_DIR)/%.o: $(TEST_DIR)/%.c
 	$(MAKEDIR_P) $(BUILD_DIR) && $(CC) $(CFLAGS) -c $< -o $@
 
