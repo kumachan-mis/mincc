@@ -36,7 +36,7 @@ void map_insert(Map* map, map_key_t key, map_value_t value) {
     int found = 0;
     while (1) {
         found = has_key(map->data[hash_index], key);
-        if (map->data[hash_index].state != Filled || found) break;
+        if (found || map->data[hash_index].state != Filled) break;
         hash_index = (hash_index + 1) % capacity;
     }
 
@@ -57,8 +57,7 @@ map_value_t map_find(Map* map, map_key_t key) {
     int found = 0;
     while (1) {
         found = has_key(map->data[hash_index], key);
-        if (found) break;
-        if (map->data[hash_index].state == Empty) break;
+        if (found || map->data[hash_index].state == Empty) break;
         hash_index = (hash_index + 1) % capacity;
     }
     return found? map->data[hash_index].value : NULL;
@@ -87,12 +86,17 @@ Map* map_extend(Map* map) {
     map->capacity = new_capacity;
 
     size_t i;
-    for (i = 0; i < new_capacity; i++) map->data[i].state = Empty;
+    for (i = 0; i < new_capacity; i++) {
+        map->data[i].key = NULL;
+        map->data[i].value = NULL;
+        map->data[i].state = Empty;
+    }
 
     for (i = 0; i < current_capacity; i++) {
         if (temp_data[i].state != Filled) continue;
         int hash_index = hash_function(temp_data[i].key, new_capacity);
-        while (map->data[hash_index].state == Filled) {
+        while (1) {
+            if (map->data[hash_index].state != Filled) break;
             hash_index = (hash_index + 1) % new_capacity;
         }
         map->data[hash_index] = temp_data[i];
