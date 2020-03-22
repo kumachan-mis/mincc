@@ -17,7 +17,7 @@ Map* map_new() {
     map->data = (map_item_t*)safe_malloc(initial_capacity*sizeof(map_item_t));
     map->size = 0;
     map->capacity = initial_capacity;
-    size_t i;
+    size_t i = 0;
     for (i = 0; i < initial_capacity; i++) {
         map->data[i].key = NULL;
         map->data[i].value = NULL;
@@ -84,7 +84,7 @@ Map* map_extend(Map* map) {
     map->data = (map_item_t*)safe_malloc(new_capacity * sizeof(map_item_t));
     map->capacity = new_capacity;
 
-    size_t i;
+    size_t i = 0;
     for (i = 0; i < new_capacity; i++) {
         map->data[i].key = NULL;
         map->data[i].value = NULL;
@@ -107,7 +107,7 @@ Map* map_extend(Map* map) {
 
 size_t hash_function(map_key_t key, size_t capacity) {
     size_t a = 31415, b = 27183, hash = 0; 
-    char* p;
+    char* p = key;
     for (p = key; *p != '\0'; p++) {
         hash = (a*hash + *p) % capacity;
         a = a * b % (capacity - 1);
