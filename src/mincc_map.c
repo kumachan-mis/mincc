@@ -8,7 +8,6 @@
 
 Map* map_extend(Map* map);
 size_t hash_function(map_key_t key, size_t capacity);
-char* key_new(char* key);
 int has_key(map_item_t item, char* key);
 
 
@@ -41,7 +40,7 @@ void map_insert(Map* map, map_key_t key, map_value_t value) {
     }
 
     if (!found) {
-        map->data[hash_index].key = key_new(key);
+        map->data[hash_index].key = str_new(key);
         map->data[hash_index].value = value;
         map->data[hash_index].state = Filled;
         map->size++;
@@ -114,12 +113,6 @@ size_t hash_function(map_key_t key, size_t capacity) {
         a = a * b % (capacity - 1);
     }
     return hash;
-}
-
-char* key_new(char* str) {
-    char* ret = (char*)safe_malloc((strlen(str) + 1) * sizeof(char));
-    strcpy(ret, str);
-    return ret;
 }
 
 int has_key(map_item_t item, char* key) {
