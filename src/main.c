@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <stdarg.h>
 
 #include "mincc_vector.h"
 #include "mincc_map.h"
@@ -125,15 +126,17 @@ typedef struct {
 } CodeEnvironment;
 
 void print_code(Vector* asts);
-void gen_code(Ast* ast, CodeEnvironment* env, FILE* file_ptr);
-void gen_assignment_expr_code(Ast* ast, CodeEnvironment* env, FILE* file_ptr);
-void gen_logical_expr_code(Ast* ast, CodeEnvironment* env, FILE* file_ptr);
-void gen_bitwise_expr_code(Ast* ast, CodeEnvironment* env, FILE* file_ptr);
-void gen_comparative_expr_code(Ast* ast, CodeEnvironment* env, FILE* file_ptr);
-void gen_shift_expr_code(Ast* ast, CodeEnvironment* env, FILE* file_ptr);
-void gen_arithmetical_expr_code(Ast* ast, CodeEnvironment* env, FILE* file_ptr);
-void gen_unary_expr_code(Ast* ast, CodeEnvironment* env, FILE* file_ptr);
-void gen_primary_expr_code(Ast* ast, CodeEnvironment* env, FILE* file_ptr);
+void put_code(FILE* file_ptr, Vector* codes);
+
+void gen_code(Ast* ast, CodeEnvironment* env);
+void gen_assignment_expr_code(Ast* ast, CodeEnvironment* env);
+void gen_logical_expr_code(Ast* ast, CodeEnvironment* env);
+void gen_bitwise_expr_code(Ast* ast, CodeEnvironment* env);
+void gen_comparative_expr_code(Ast* ast, CodeEnvironment* env);
+void gen_shift_expr_code(Ast* ast, CodeEnvironment* env);
+void gen_arithmetical_expr_code(Ast* ast, CodeEnvironment* env);
+void gen_unary_expr_code(Ast* ast, CodeEnvironment* env);
+void gen_primary_expr_code(Ast* ast, CodeEnvironment* env);
 
 int is_assignment_expr(AstType type);
 int is_logical_expr(AstType type);
@@ -143,6 +146,8 @@ int is_shift_expr(AstType type);
 int is_arithmetical_expr(AstType type);
 int is_unary_expr(AstType type);
 int is_primary_expr(AstType type);
+
+void append_code(Vector* codes, char* format, ...);
 
 void assert_code_gen(int condition);
 
@@ -758,45 +763,71 @@ void print_code(Vector* asts) {
     env.num_labels = 0;
     env.stack_offset = 0;
     env.var_map = map_new();
-
-    fprintf(stdout, ".global _main\n");
-    fprintf(stdout, "_main:\n");
+    env.codes = vector_new();
 
     size_t i = 0, size = asts->size;
     for (i = 0; i < size; i++) {
-        gen_code(vector_at(asts, i), &env, stdout);
-        printf("\tpop %%rax\n");
+        gen_code(vector_at(asts, i), &env);
+        append_code(env.codes, "\tpop %%rax\n");
     }
-    printf("\tret\n");
+
+    Vector* header_codes = vector_new();
+    append_code(header_codes, ".global _main\n");
+    append_code(header_codes, "_main:\n");
+    append_code(header_codes, "\tpush %%rbp\n");
+    append_code(header_codes, "\tmov %%rsp, %%rbp\n");
+    append_code(header_codes, "\tsub $%d, %%rsp\n", env.stack_offset);
+
+    Vector* footer_codes = vector_new();
+    append_code(footer_codes, "\tmov %%rbp, %%rsp\n");
+    append_code(footer_codes, "\tpop %%rbp\n");
+    append_code(footer_codes, "\tret\n");
+
+    put_code(stdout, header_codes);
+    put_code(stdout, env.codes);
+    put_code(stdout, footer_codes);
+
+    vector_delete(footer_codes);
+    vector_delete(header_codes);
+    vector_delete(env.codes);
+    map_delete(env.var_map);
 }
 
-void gen_code(Ast* ast, CodeEnvironment* env, FILE* file_ptr) {
+void put_code(FILE* file_ptr, Vector* codes) {
+    size_t i = 0, size = codes->size;
+    for (i = 0; i < size; i++) {
+        char* str = (char*)vector_at(codes, i);
+        fputs(str, file_ptr);
+    }
+}
+
+void gen_code(Ast* ast, CodeEnvironment* env) {
     AstType type = ast->type;
 
     if (is_assignment_expr(type)) {
-        gen_assignment_expr_code(ast, env, file_ptr);
+        gen_assignment_expr_code(ast, env);
     } else if (is_logical_expr(type)) {
-        gen_logical_expr_code(ast, env, file_ptr);
+        gen_logical_expr_code(ast, env);
     } else if (is_bitwise_expr(type)) {
-        gen_bitwise_expr_code(ast, env, file_ptr);
+        gen_bitwise_expr_code(ast, env);
     } else if (is_comparative_expr(type)) {
-        gen_comparative_expr_code(ast, env, file_ptr);
+        gen_comparative_expr_code(ast, env);
     } else if (is_shift_expr(type)) {
-        gen_shift_expr_code(ast, env, file_ptr);
+        gen_shift_expr_code(ast, env);
     } else if (is_arithmetical_expr(type)) {
-        gen_arithmetical_expr_code(ast, env, file_ptr);
+        gen_arithmetical_expr_code(ast, env);
     } else if (is_unary_expr(type)) {
-        gen_unary_expr_code(ast, env, file_ptr);
+        gen_unary_expr_code(ast, env);
     } else if (is_primary_expr(type)) {
-        gen_primary_expr_code(ast, env, file_ptr);
+        gen_primary_expr_code(ast, env);
     } else  {
         assert_code_gen(0);
     }
 }
 
-void gen_assignment_expr_code(Ast* ast, CodeEnvironment* env, FILE* file_ptr) {
-    gen_code(ast->rhs, env, file_ptr);
-    fprintf(file_ptr, "\tpop %%rax\n");
+void gen_assignment_expr_code(Ast* ast, CodeEnvironment* env) {
+    gen_code(ast->rhs, env);
+    append_code(env->codes, "\tpop %%rax\n");
 
     assert_code_gen(ast->lhs->type == AST_VAR);
     char* ident = ast->lhs->value.value_ident;
@@ -814,185 +845,185 @@ void gen_assignment_expr_code(Ast* ast, CodeEnvironment* env, FILE* file_ptr) {
             assert_code_gen(0);
     }
 
-    fprintf(file_ptr, "\tmov %%eax, -%d(%%rbp)\n", *offset_ptr);
-    fprintf(file_ptr, "\tpush %%rax\n");
+    append_code(env->codes, "\tmov %%eax, -%d(%%rbp)\n", *offset_ptr);
+    append_code(env->codes, "\tpush %%rax\n");
 }
 
-void gen_logical_expr_code(Ast* ast, CodeEnvironment* env, FILE* file_ptr) {
+void gen_logical_expr_code(Ast* ast, CodeEnvironment* env) {
     int exit_labno = env->num_labels; env->num_labels++;
 
-    gen_code(ast->lhs, env, file_ptr);
-    fprintf(file_ptr, "\tpop %%rax\n");
-    fprintf(file_ptr, "\tcmp $0, %%rax\n");
+    gen_code(ast->lhs, env);
+    append_code(env->codes, "\tpop %%rax\n");
+    append_code(env->codes, "\tcmp $0, %%rax\n");
 
     switch (ast->type) {
         case AST_LOR:
-            fprintf(file_ptr, "\tjne .L%d\n", exit_labno);
+            append_code(env->codes, "\tjne .L%d\n", exit_labno);
             break;
         case AST_LAND:
-            fprintf(file_ptr, "\tje .L%d\n", exit_labno);
+            append_code(env->codes, "\tje .L%d\n", exit_labno);
             break;
         default:
             assert_code_gen(0);
     }
 
-    gen_code(ast->rhs, env, file_ptr);
-    fprintf(file_ptr, "\tpop %%rax\n");
-    fprintf(file_ptr, "\tcmp $0, %%rax\n");
+    gen_code(ast->rhs, env);
+    append_code(env->codes, "\tpop %%rax\n");
+    append_code(env->codes, "\tcmp $0, %%rax\n");
 
-    fprintf(file_ptr, ".L%d:\n", exit_labno);
-    fprintf(file_ptr, "\tsetne %%al\n");
-    fprintf(file_ptr, "\tmovzb %%al, %%eax\n");
-    fprintf(file_ptr, "\tpush %%rax\n");
+    append_code(env->codes, ".L%d:\n", exit_labno);
+    append_code(env->codes, "\tsetne %%al\n");
+    append_code(env->codes, "\tmovzb %%al, %%eax\n");
+    append_code(env->codes, "\tpush %%rax\n");
 }
 
-void gen_bitwise_expr_code(Ast* ast, CodeEnvironment* env, FILE* file_ptr) {
-    gen_code(ast->lhs, env, file_ptr);
-    gen_code(ast->rhs, env, file_ptr);
+void gen_bitwise_expr_code(Ast* ast, CodeEnvironment* env) {
+    gen_code(ast->lhs, env);
+    gen_code(ast->rhs, env);
 
-    fprintf(file_ptr, "\tpop %%rdi\n");
-    fprintf(file_ptr, "\tpop %%rax\n");
+    append_code(env->codes, "\tpop %%rdi\n");
+    append_code(env->codes, "\tpop %%rax\n");
     switch (ast->type) {
         case AST_OR:
-            fprintf(file_ptr, "\tor %%edi, %%eax\n");
+            append_code(env->codes, "\tor %%edi, %%eax\n");
             break;
         case AST_XOR:
-            fprintf(file_ptr, "\txor %%edi, %%eax\n");
+            append_code(env->codes, "\txor %%edi, %%eax\n");
             break;
         case AST_AND:
-            fprintf(file_ptr, "\tand %%edi, %%eax\n");
+            append_code(env->codes, "\tand %%edi, %%eax\n");
             break;
         default:
             assert_code_gen(0);
     }
-    fprintf(file_ptr, "\tpush %%rax\n");
+    append_code(env->codes, "\tpush %%rax\n");
 }
 
-void gen_comparative_expr_code(Ast* ast, CodeEnvironment* env, FILE* file_ptr) {
-    gen_code(ast->lhs, env, file_ptr);
-    gen_code(ast->rhs, env, file_ptr);
+void gen_comparative_expr_code(Ast* ast, CodeEnvironment* env) {
+    gen_code(ast->lhs, env);
+    gen_code(ast->rhs, env);
 
-    fprintf(file_ptr, "\tpop %%rdi\n");
-    fprintf(file_ptr, "\tpop %%rax\n");
-    fprintf(file_ptr, "\tcmp %%edi, %%eax\n");
+    append_code(env->codes, "\tpop %%rdi\n");
+    append_code(env->codes, "\tpop %%rax\n");
+    append_code(env->codes, "\tcmp %%edi, %%eax\n");
     switch (ast->type) {
         case AST_EQ:
-            fprintf(file_ptr, "\tsete %%al\n");
+            append_code(env->codes, "\tsete %%al\n");
             break;
         case AST_NEQ:
-            fprintf(file_ptr, "\tsetne %%al\n");
+            append_code(env->codes, "\tsetne %%al\n");
             break;
         case AST_LT:
-            fprintf(file_ptr, "\tsetl %%al\n");
+            append_code(env->codes, "\tsetl %%al\n");
             break;
         case AST_GT:
-            fprintf(file_ptr, "\tsetg %%al\n");
+            append_code(env->codes, "\tsetg %%al\n");
             break;
         case AST_LEQ:
-            fprintf(file_ptr, "\tsetle %%al\n");
+            append_code(env->codes, "\tsetle %%al\n");
             break;
         case AST_GEQ:
-            fprintf(file_ptr, "\tsetge %%al\n");
+            append_code(env->codes, "\tsetge %%al\n");
             break;
         default:
             assert_code_gen(0);
     }
-    fprintf(file_ptr, "\tmovzb %%al, %%eax\n");
-    fprintf(file_ptr, "\tpush %%rax\n");
+    append_code(env->codes, "\tmovzb %%al, %%eax\n");
+    append_code(env->codes, "\tpush %%rax\n");
 }
 
-void gen_shift_expr_code(Ast* ast, CodeEnvironment* env, FILE* file_ptr) {
-    gen_code(ast->lhs, env, file_ptr);
-    gen_code(ast->rhs, env, file_ptr);
+void gen_shift_expr_code(Ast* ast, CodeEnvironment* env) {
+    gen_code(ast->lhs, env);
+    gen_code(ast->rhs, env);
 
-    fprintf(file_ptr, "\tpop %%rcx\n");
-    fprintf(file_ptr, "\tpop %%rax\n");
+    append_code(env->codes, "\tpop %%rcx\n");
+    append_code(env->codes, "\tpop %%rax\n");
     switch (ast->type) {
         case AST_LSHIFT:
-            fprintf(file_ptr, "\tsal %%cl, %%eax\n");
+            append_code(env->codes, "\tsal %%cl, %%eax\n");
             break;
         case AST_RSHIFT:
-            fprintf(file_ptr, "\tsar %%cl, %%eax\n");
+            append_code(env->codes, "\tsar %%cl, %%eax\n");
             break;
         default:
             assert_code_gen(0);
     }
-    fprintf(file_ptr, "\tpush %%rax\n");
+    append_code(env->codes, "\tpush %%rax\n");
 }
 
-void gen_arithmetical_expr_code(Ast* ast, CodeEnvironment* env, FILE* file_ptr) {
-    gen_code(ast->lhs, env, file_ptr);
-    gen_code(ast->rhs, env, file_ptr);
+void gen_arithmetical_expr_code(Ast* ast, CodeEnvironment* env) {
+    gen_code(ast->lhs, env);
+    gen_code(ast->rhs, env);
 
-    fprintf(file_ptr, "\tpop %%rdi\n");
-    fprintf(file_ptr, "\tpop %%rax\n");
+    append_code(env->codes, "\tpop %%rdi\n");
+    append_code(env->codes, "\tpop %%rax\n");
     switch (ast->type) {
         case AST_ADD:
-            fprintf(file_ptr, "\tadd %%edi, %%eax\n");
-            fprintf(file_ptr, "\tpush %%rax\n");
+            append_code(env->codes, "\tadd %%edi, %%eax\n");
+            append_code(env->codes, "\tpush %%rax\n");
             break;
         case AST_SUB:
-            fprintf(file_ptr, "\tsub %%edi, %%eax\n");
-            fprintf(file_ptr, "\tpush %%rax\n");
+            append_code(env->codes, "\tsub %%edi, %%eax\n");
+            append_code(env->codes, "\tpush %%rax\n");
             break;
         case AST_MUL:
-            fprintf(file_ptr, "\timul %%edi, %%eax\n");
-            fprintf(file_ptr, "\tpush %%rax\n");
+            append_code(env->codes, "\timul %%edi, %%eax\n");
+            append_code(env->codes, "\tpush %%rax\n");
             break;
         case AST_DIV:
-            fprintf(file_ptr, "\tcltd\n");
-            fprintf(file_ptr, "\tidiv %%edi\n");
-            fprintf(file_ptr, "\tpush %%rax\n");
+            append_code(env->codes, "\tcltd\n");
+            append_code(env->codes, "\tidiv %%edi\n");
+            append_code(env->codes, "\tpush %%rax\n");
             break;
         case AST_MOD:
-            fprintf(file_ptr, "\tcltd\n");
-            fprintf(file_ptr, "\tidiv %%edi\n");
-            fprintf(file_ptr, "\tpush %%rdx\n");
+            append_code(env->codes, "\tcltd\n");
+            append_code(env->codes, "\tidiv %%edi\n");
+            append_code(env->codes, "\tpush %%rdx\n");
             break;
         default:
             assert_code_gen(0);
     }
 }
 
-void gen_unary_expr_code(Ast* ast, CodeEnvironment* env, FILE* file_ptr) {
-    gen_code(ast->lhs, env, file_ptr);
+void gen_unary_expr_code(Ast* ast, CodeEnvironment* env) {
+    gen_code(ast->lhs, env);
 
     switch (ast->type) {
         case AST_POSI:
             /* Do Nothing */
             break;
         case AST_NEGA:
-            fprintf(file_ptr, "\tpop %%rax\n");
-            fprintf(file_ptr, "\tneg %%eax\n");
-            fprintf(file_ptr, "\tpush %%rax\n");
+            append_code(env->codes, "\tpop %%rax\n");
+            append_code(env->codes, "\tneg %%eax\n");
+            append_code(env->codes, "\tpush %%rax\n");
             break;
         case AST_NOT:
-            fprintf(file_ptr, "\tpop %%rax\n");
-            fprintf(file_ptr, "\tnot %%eax\n");
-            fprintf(file_ptr, "\tpush %%rax\n");
+            append_code(env->codes, "\tpop %%rax\n");
+            append_code(env->codes, "\tnot %%eax\n");
+            append_code(env->codes, "\tpush %%rax\n");
             break;
         case AST_LNOT:
-            fprintf(file_ptr, "\tpop %%rax\n");
-            fprintf(file_ptr, "\tcmp $0, %%eax\n");
-            fprintf(file_ptr, "\tsete %%al\n");
-            fprintf(file_ptr, "\tmovzb %%al, %%eax\n");
-            fprintf(file_ptr, "\tpush %%rax\n");
+            append_code(env->codes, "\tpop %%rax\n");
+            append_code(env->codes, "\tcmp $0, %%eax\n");
+            append_code(env->codes, "\tsete %%al\n");
+            append_code(env->codes, "\tmovzb %%al, %%eax\n");
+            append_code(env->codes, "\tpush %%rax\n");
             break;
         default:
             assert_code_gen(0);
     }
 }
 
-void gen_primary_expr_code(Ast* ast, CodeEnvironment* env, FILE* file_ptr) {
+void gen_primary_expr_code(Ast* ast, CodeEnvironment* env) {
     switch (ast->type) {
         case AST_INT:
-            fprintf(file_ptr, "\tpush $%d\n", ast->value.value_int);
+            append_code(env->codes, "\tpush $%d\n", ast->value.value_int);
             break;
         case AST_VAR: {
             int* offset_ptr = (int*)map_find(env->var_map, ast->value.value_ident);
             assert_code_gen(offset_ptr != NULL);
-            fprintf(file_ptr, "\tmov %%eax, -%d(%%rbp)\n", *offset_ptr);
-            fprintf(file_ptr, "\tpush %%rax\n");
+            append_code(env->codes, "\tmov -%d(%%rbp), %%eax\n", *offset_ptr);
+            append_code(env->codes, "\tpush %%rax\n");
         }
         break;
         default:
@@ -1034,6 +1065,16 @@ int is_unary_expr(AstType type) {
 
 int is_primary_expr(AstType type) {
     return type == AST_INT || type == AST_VAR;
+}
+
+void append_code(Vector* codes, char* format, ...) {
+    char buffer[511];
+    va_list list;
+    va_start(list, format);
+    int success = vsnprintf(buffer, 510, format, list);
+    va_end(list);
+    assert_code_gen(success);
+    vector_push_back(codes, str_new(buffer));
 }
 
 void assert_code_gen(int condition) {

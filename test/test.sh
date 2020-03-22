@@ -103,6 +103,9 @@ test_mincc "1 != 1 || 2 != 2;" 0
 test_mincc "!0;"               1
 test_mincc "!1;"               0
 
-test_mincc "x = 3; x + 1;"               4
-test_mincc "tmp =  2+110-94; tmp*2;"    36
+test_mincc "x = 3; x + 1;"                            4
+test_mincc "tmp =  2+110-94; tmp*2;"                 36
+test_mincc "a = 5;b = 2;c = 6; (a + c)*b*b;"         44
+test_mincc "a = 5;b = 12; c=13; a*a+b*b == c*c;"      1
+test_mincc "x = 1;y = 3; x = x + y; y = x + y; x*y;" 28
 echo "OK"
