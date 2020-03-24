@@ -57,7 +57,6 @@ Token* read_token_int(FILE* file_ptr);
 Token* read_token_keyword_or_ident(FILE* file_ptr);
 void skip_spaces(FILE* file_ptr);
 Token* token_new(TokenType type);
-void tokens_delete(Vector* tokens);
 
 void assert_lexicon(int condition);
 
@@ -94,11 +93,10 @@ typedef enum {
     AST_EXPR_STMT,
 } AstType;
 
-typedef struct _Ast {
+typedef struct {
     AstType type;
     Value value;
-    struct _Ast *lhs;
-    struct _Ast *rhs;
+    Vector* children;
 } Ast;
 
 Vector* parse(Vector* tokens);
@@ -173,7 +171,7 @@ int main(int argc, char* argv[]) {
     Vector* asts = parse(tokens);
     print_code(asts);
     asts_delete(asts);
-    tokens_delete(tokens);
+    vector_delete(tokens);
     return 0;
 }
 
@@ -345,10 +343,6 @@ Token* token_new(TokenType type) {
     return token;
 }
 
-void tokens_delete(Vector* tokens) {
-    vector_delete(tokens);
-}
-
 void assert_lexicon(int condition) {
     if (condition) return;
     fprintf(stderr, "Error: fail to analyze lexicon\n");
@@ -390,7 +384,7 @@ Ast* parse_expr_stmt(Vector* tokens, size_t* pos) {
         (*pos)++;
         assert_syntax(token->type == TOKEN_SEMICOLON);
         ast = ast_new(AST_EXPR_STMT);
-        ast->lhs = expr;
+        vector_push_back(ast->children, expr);
     }
     return ast;
 }
@@ -408,7 +402,7 @@ Ast* parse_jump_stmt(Vector* tokens, size_t* pos) {
             (*pos)++;
             assert_syntax(token->type == TOKEN_SEMICOLON);
             ast = ast_new(AST_RETURN_STMT);
-            ast->lhs = expr;
+            vector_push_back(ast->children, expr);
             break;
         default:
             assert_syntax(0);
@@ -433,13 +427,15 @@ Ast* parse_assignment_expr(Vector* tokens, size_t* pos) {
             lhs = ast;
             rhs = parse_assignment_expr(tokens, pos);
             ast = ast_new(AST_ASSIGN);
-            ast->lhs = lhs;
-            ast->rhs = rhs;
+            vector_push_back(ast->children, lhs);
+            vector_push_back(ast->children, rhs);
             break;
         default:
             *pos = pos_memo;
-            return parse_logical_or_expr(tokens, pos);
+            ast = parse_logical_or_expr(tokens, pos);
+            break;
     }
+    return ast;
 }
 
 Ast* parse_logical_or_expr(Vector* tokens, size_t* pos) {
@@ -455,8 +451,8 @@ Ast* parse_logical_or_expr(Vector* tokens, size_t* pos) {
                 lhs = ast;
                 rhs = parse_logical_and_expr(tokens, pos);
                 ast = ast_new(AST_LOR);
-                ast->lhs = lhs;
-                ast->rhs = rhs;
+                vector_push_back(ast->children, lhs);
+                vector_push_back(ast->children, rhs);
                 break;
             default:
                 (*pos)--;
@@ -478,8 +474,8 @@ Ast* parse_logical_and_expr(Vector* tokens, size_t* pos) {
                 lhs = ast;
                 rhs = parse_or_expr(tokens, pos);
                 ast = ast_new(AST_LAND);
-                ast->lhs = lhs;
-                ast->rhs = rhs;
+                vector_push_back(ast->children, lhs);
+                vector_push_back(ast->children, rhs);
                 break;
             default:
                 (*pos)--;
@@ -501,8 +497,8 @@ Ast* parse_or_expr(Vector* tokens, size_t* pos) {
                 lhs = ast;
                 rhs = parse_xor_expr(tokens, pos);
                 ast = ast_new(AST_OR);
-                ast->lhs = lhs;
-                ast->rhs = rhs;
+                vector_push_back(ast->children, lhs);
+                vector_push_back(ast->children, rhs);
                 break;
             default:
                 (*pos)--;
@@ -524,8 +520,8 @@ Ast* parse_xor_expr(Vector* tokens, size_t* pos) {
                 lhs = ast;
                 rhs = parse_and_expr(tokens, pos);
                 ast = ast_new(AST_XOR);
-                ast->lhs = lhs;
-                ast->rhs = rhs;
+                vector_push_back(ast->children, lhs);
+                vector_push_back(ast->children, rhs);
                 break;
             default:
                 (*pos)--;
@@ -547,8 +543,8 @@ Ast* parse_and_expr(Vector* tokens, size_t* pos) {
                 lhs = ast;
                 rhs = parse_equality_expr(tokens, pos);
                 ast = ast_new(AST_AND);
-                ast->lhs = lhs;
-                ast->rhs = rhs;
+                vector_push_back(ast->children, lhs);
+                vector_push_back(ast->children, rhs);
                 break;
             default:
                 (*pos)--;
@@ -570,15 +566,15 @@ Ast* parse_equality_expr(Vector* tokens, size_t* pos) {
                 lhs = ast;
                 rhs = parse_relational_expr(tokens, pos);
                 ast = ast_new(AST_EQ);
-                ast->lhs = lhs;
-                ast->rhs = rhs;
+                vector_push_back(ast->children, lhs);
+                vector_push_back(ast->children, rhs);
                 break;
             case TOKEN_EXCL_EQ:
                 lhs = ast;
                 rhs = parse_relational_expr(tokens, pos);
                 ast = ast_new(AST_NEQ);
-                ast->lhs = lhs;
-                ast->rhs = rhs;
+                vector_push_back(ast->children, lhs);
+                vector_push_back(ast->children, rhs);
                 break;
             default:
                 (*pos)--;
@@ -600,29 +596,29 @@ Ast* parse_relational_expr(Vector* tokens, size_t* pos) {
                 lhs = ast;
                 rhs = parse_shift_expr(tokens, pos);
                 ast = ast_new(AST_LT);
-                ast->lhs = lhs;
-                ast->rhs = rhs;
+                vector_push_back(ast->children, lhs);
+                vector_push_back(ast->children, rhs);
                 break;
             case TOKEN_RANGLE:
                 lhs = ast;
                 rhs = parse_shift_expr(tokens, pos);
                 ast = ast_new(AST_GT);
-                ast->lhs = lhs;
-                ast->rhs = rhs;
+                vector_push_back(ast->children, lhs);
+                vector_push_back(ast->children, rhs);
                 break;
             case TOKEN_LANGLE_EQ:
                 lhs = ast;
                 rhs = parse_shift_expr(tokens, pos);
                 ast = ast_new(AST_LEQ);
-                ast->lhs = lhs;
-                ast->rhs = rhs;
+                vector_push_back(ast->children, lhs);
+                vector_push_back(ast->children, rhs);
                 break;
             case TOKEN_RANGLE_EQ:
                 lhs = ast;
                 rhs = parse_shift_expr(tokens, pos);
                 ast = ast_new(AST_GEQ);
-                ast->lhs = lhs;
-                ast->rhs = rhs;
+                vector_push_back(ast->children, lhs);
+                vector_push_back(ast->children, rhs);
                 break;
             default:
                 (*pos)--;
@@ -644,15 +640,15 @@ Ast* parse_shift_expr(Vector* tokens, size_t* pos) {
                 lhs = ast;
                 rhs = parse_additive_expr(tokens, pos);
                 ast = ast_new(AST_LSHIFT);
-                ast->lhs = lhs;
-                ast->rhs = rhs;
+                vector_push_back(ast->children, lhs);
+                vector_push_back(ast->children, rhs);
                 break;
             case TOKEN_DBL_RANGLE:
                 lhs = ast;
                 rhs = parse_additive_expr(tokens, pos);
                 ast = ast_new(AST_RSHIFT);
-                ast->lhs = lhs;
-                ast->rhs = rhs;
+                vector_push_back(ast->children, lhs);
+                vector_push_back(ast->children, rhs);
                 break;
             default:
                 (*pos)--;
@@ -674,15 +670,15 @@ Ast* parse_additive_expr(Vector* tokens, size_t* pos) {
                 lhs = ast;
                 rhs = parse_multiplicative_expr(tokens, pos);
                 ast = ast_new(AST_ADD);
-                ast->lhs = lhs;
-                ast->rhs = rhs;
+                vector_push_back(ast->children, lhs);
+                vector_push_back(ast->children, rhs);
                 break;
             case TOKEN_MINUS:
                 lhs = ast;
                 rhs = parse_multiplicative_expr(tokens, pos);
                 ast = ast_new(AST_SUB);
-                ast->lhs = lhs;
-                ast->rhs = rhs;
+                vector_push_back(ast->children, lhs);
+                vector_push_back(ast->children, rhs);
                 break;
             default:
                 (*pos)--;
@@ -703,22 +699,22 @@ Ast* parse_multiplicative_expr(Vector* tokens, size_t* pos) {
                 lhs = ast;
                 rhs = parse_unary_expr(tokens, pos);
                 ast = ast_new(AST_MUL);
-                ast->lhs = lhs;
-                ast->rhs = rhs;
+                vector_push_back(ast->children, lhs);
+                vector_push_back(ast->children, rhs);
                 break;
             case TOKEN_SLASH:
                 lhs = ast;
                 rhs = parse_unary_expr(tokens, pos);
                 ast = ast_new(AST_DIV);
-                ast->lhs = lhs;
-                ast->rhs = rhs;
+                vector_push_back(ast->children, lhs);
+                vector_push_back(ast->children, rhs);
                 break;
             case TOKEN_PERCENT:
                 lhs = ast;
                 rhs = parse_unary_expr(tokens, pos);
                 ast = ast_new(AST_MOD);
-                ast->lhs = lhs;
-                ast->rhs = rhs;
+                vector_push_back(ast->children, lhs);
+                vector_push_back(ast->children, rhs);
                 break;
             default:
                 (*pos)--;
@@ -729,30 +725,30 @@ Ast* parse_multiplicative_expr(Vector* tokens, size_t* pos) {
 
 Ast* parse_unary_expr(Vector* tokens, size_t* pos) {
     Ast* ast = NULL;
-    Ast* lhs = NULL;
-    Ast* rhs = NULL;
+    Ast* child = NULL;
+
     Token* token = (Token*)vector_at(tokens, *pos);
     (*pos)++;
     switch (token->type) {
         case TOKEN_PLUS:
-            lhs = parse_unary_expr(tokens, pos);
+            child = parse_unary_expr(tokens, pos);
             ast = ast_new(AST_POSI);
-            ast->lhs = lhs;
+            vector_push_back(ast->children, child);
             break;
         case TOKEN_MINUS:
-            lhs = parse_unary_expr(tokens, pos);
+            child = parse_unary_expr(tokens, pos);
             ast = ast_new(AST_NEGA);
-            ast->lhs = lhs;
+            vector_push_back(ast->children, child);
             break;
         case TOKEN_TILDER:
-            lhs = parse_unary_expr(tokens, pos);
+            child = parse_unary_expr(tokens, pos);
             ast = ast_new(AST_NOT);
-            ast->lhs = lhs;
+            vector_push_back(ast->children, child);
             break;
         case TOKEN_EXCL:
-            lhs = parse_unary_expr(tokens, pos);
+            child = parse_unary_expr(tokens, pos);
             ast = ast_new(AST_LNOT);
-            ast->lhs = lhs;
+            vector_push_back(ast->children, child);
             break;
         default:
             (*pos)--;
@@ -764,18 +760,16 @@ Ast* parse_unary_expr(Vector* tokens, size_t* pos) {
 
 Ast* parse_postfix_expr(Vector* tokens, size_t* pos) {
     Ast* ast = parse_primary_expr(tokens, pos);
-    Ast* lhs = NULL;
-    Ast* rhs = NULL;
+    Ast* child = NULL;
 
     while (1) {
         Token* token = (Token*)vector_at(tokens, *pos);
         (*pos)++;
         switch (token->type) {
             case TOKEN_LPAREN:
-                lhs = ast;
+                child = ast;
                 ast = ast_new(AST_CALL);
-                ast->lhs = lhs;
-                ast->rhs = rhs;
+                vector_push_back(ast->children, child);
                 token = (Token*)vector_at(tokens, *pos);
                 (*pos)++;
                 assert_syntax(token->type == TOKEN_RPAREN);
@@ -816,14 +810,16 @@ Ast* parse_primary_expr(Vector* tokens, size_t* pos) {
 Ast* ast_new(AstType type) {
     Ast* ast = (Ast*)safe_malloc(sizeof(Ast));
     ast->type = type;
-    ast->lhs = NULL;
-    ast->rhs = NULL;
+    ast->children = vector_new();
     return ast;
 }
 
 void ast_delete(Ast* ast) {
-    if (ast->lhs != NULL) ast_delete(ast->lhs);
-    if (ast->rhs != NULL) ast_delete(ast->rhs);
+    size_t i = 0, size = ast->children->size;
+    for (i = 0; i < size; i++) {
+        Ast* child = (Ast*)vector_at(ast->children, i);
+        ast_delete(child);
+    }
     free(ast);
 }
 
@@ -900,9 +896,11 @@ void gen_stmt_code(Ast* ast, CodeEnvironment* env) {
 }
 
 void gen_expr_stmt_code(Ast* ast, CodeEnvironment* env) {
+    Ast* expr = (Ast*)vector_at(ast->children, 0);
+
     switch (ast->type) {
         case AST_EXPR_STMT:
-            gen_expr_code(ast->lhs, env);
+            gen_expr_code(expr, env);
             append_code(env->codes, "\tadd $8, %%rsp\n");
             break;
         case AST_NULL_STMT:
@@ -915,9 +913,11 @@ void gen_expr_stmt_code(Ast* ast, CodeEnvironment* env) {
 }
 
 void gen_jump_stmt_code(Ast* ast, CodeEnvironment* env) {
+    Ast* expr = (Ast*)vector_at(ast->children, 0);
+
     switch (ast->type) {
         case AST_RETURN_STMT:
-            gen_expr_code(ast->lhs, env);
+            gen_expr_code(expr, env);
             append_code(env->codes, "\tpop %%rax\n");
             append_code(env->codes, "\tjmp .L_main_return\n");
             break;
@@ -954,11 +954,14 @@ void gen_expr_code(Ast* ast, CodeEnvironment* env) {
 }
 
 void gen_assignment_expr_code(Ast* ast, CodeEnvironment* env) {
-    gen_expr_code(ast->rhs, env);
-    append_code(env->codes, "\tpop %%rax\n");
+    Ast* lhs = (Ast*)vector_at(ast->children, 0);
+    Ast* rhs = (Ast*)vector_at(ast->children, 1);
 
-    assert_code_gen(ast->lhs->type == AST_VAR);
-    char* ident = ast->lhs->value.value_ident;
+    gen_expr_code(rhs, env);
+    append_code(env->codes, "\tpop %%rax\n");
+    assert_code_gen(lhs->type == AST_VAR);
+
+    char* ident = lhs->value.value_ident;
     int* offset_ptr = (int*)map_find(env->var_map, ident);
     if (offset_ptr == NULL) {
         env->stack_offset += 8;
@@ -978,9 +981,11 @@ void gen_assignment_expr_code(Ast* ast, CodeEnvironment* env) {
 }
 
 void gen_logical_expr_code(Ast* ast, CodeEnvironment* env) {
+    Ast* lhs = (Ast*)vector_at(ast->children, 0);
+    Ast* rhs = (Ast*)vector_at(ast->children, 1);
     int exit_labno = env->num_labels; env->num_labels++;
 
-    gen_expr_code(ast->lhs, env);
+    gen_expr_code(lhs, env);
     append_code(env->codes, "\tpop %%rax\n");
     append_code(env->codes, "\tcmp $0, %%rax\n");
 
@@ -995,7 +1000,7 @@ void gen_logical_expr_code(Ast* ast, CodeEnvironment* env) {
             assert_code_gen(0);
     }
 
-    gen_expr_code(ast->rhs, env);
+    gen_expr_code(rhs, env);
     append_code(env->codes, "\tpop %%rax\n");
     append_code(env->codes, "\tcmp $0, %%rax\n");
 
@@ -1006,8 +1011,10 @@ void gen_logical_expr_code(Ast* ast, CodeEnvironment* env) {
 }
 
 void gen_bitwise_expr_code(Ast* ast, CodeEnvironment* env) {
-    gen_expr_code(ast->lhs, env);
-    gen_expr_code(ast->rhs, env);
+    Ast* lhs = (Ast*)vector_at(ast->children, 0);
+    Ast* rhs = (Ast*)vector_at(ast->children, 1);
+    gen_expr_code(lhs, env);
+    gen_expr_code(rhs, env);
 
     append_code(env->codes, "\tpop %%rdi\n");
     append_code(env->codes, "\tpop %%rax\n");
@@ -1028,8 +1035,10 @@ void gen_bitwise_expr_code(Ast* ast, CodeEnvironment* env) {
 }
 
 void gen_comparative_expr_code(Ast* ast, CodeEnvironment* env) {
-    gen_expr_code(ast->lhs, env);
-    gen_expr_code(ast->rhs, env);
+    Ast* lhs = (Ast*)vector_at(ast->children, 0);
+    Ast* rhs = (Ast*)vector_at(ast->children, 1);
+    gen_expr_code(lhs, env);
+    gen_expr_code(rhs, env);
 
     append_code(env->codes, "\tpop %%rdi\n");
     append_code(env->codes, "\tpop %%rax\n");
@@ -1061,8 +1070,10 @@ void gen_comparative_expr_code(Ast* ast, CodeEnvironment* env) {
 }
 
 void gen_shift_expr_code(Ast* ast, CodeEnvironment* env) {
-    gen_expr_code(ast->lhs, env);
-    gen_expr_code(ast->rhs, env);
+    Ast* lhs = (Ast*)vector_at(ast->children, 0);
+    Ast* rhs = (Ast*)vector_at(ast->children, 1);
+    gen_expr_code(lhs, env);
+    gen_expr_code(rhs, env);
 
     append_code(env->codes, "\tpop %%rcx\n");
     append_code(env->codes, "\tpop %%rax\n");
@@ -1080,8 +1091,10 @@ void gen_shift_expr_code(Ast* ast, CodeEnvironment* env) {
 }
 
 void gen_arithmetical_expr_code(Ast* ast, CodeEnvironment* env) {
-    gen_expr_code(ast->lhs, env);
-    gen_expr_code(ast->rhs, env);
+    Ast* lhs = (Ast*)vector_at(ast->children, 0);
+    Ast* rhs = (Ast*)vector_at(ast->children, 1);
+    gen_expr_code(lhs, env);
+    gen_expr_code(rhs, env);
 
     append_code(env->codes, "\tpop %%rdi\n");
     append_code(env->codes, "\tpop %%rax\n");
@@ -1114,7 +1127,8 @@ void gen_arithmetical_expr_code(Ast* ast, CodeEnvironment* env) {
 }
 
 void gen_unary_expr_code(Ast* ast, CodeEnvironment* env) {
-    gen_expr_code(ast->lhs, env);
+    Ast* child = (Ast*)vector_at(ast->children, 0);
+    gen_expr_code(child, env);
 
     switch (ast->type) {
         case AST_POSI:
@@ -1143,10 +1157,12 @@ void gen_unary_expr_code(Ast* ast, CodeEnvironment* env) {
 }
 
 void gen_postfix_expr_code(Ast* ast, CodeEnvironment* env) {
+    Ast* child = (Ast*)vector_at(ast->children, 0);
+
     switch (ast->type) {
         case AST_CALL:
-            assert_code_gen(ast->lhs->type == AST_VAR);
-            append_code(env->codes, "\tcall _%s\n", ast->lhs->value.value_ident);
+            assert_code_gen(child->type == AST_VAR);
+            append_code(env->codes, "\tcall _%s\n", child->value.value_ident);
             append_code(env->codes, "\tpush %%rax\n");
             break;
         default:
@@ -1231,6 +1247,6 @@ void append_code(Vector* codes, char* format, ...) {
 
 void assert_code_gen(int condition) {
     if (condition) return;
-    fprintf(stderr, "Error: fail to generate code\n");
+    fprintf(stderr, "Error: fail to generate code: %d\n");
     exit(1);
 }
