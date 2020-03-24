@@ -9,17 +9,25 @@ test_mincc() {
 
     input=$1
     echo ${input} | ${MINCC} ${input} > ${ASSEMBLY}
+
+    if [ $? -ne 0 ]; then
+        echo " \e[0;31m[FAIL]\e[m ${input} => ${expected} expected, but failed to compile"
+        exit 1
+    fi
+
     gcc-9 ${ASSEMBLY} ${TESTLIB} -o ${EXEC}
     ${EXEC}
 
     actual=$?
     expected=$2
     if [ ${actual} = ${expected} ]; then
-        echo "${input} => ${actual}"
+        echo " \e[0;32m[PASS]\e[m ${input} => ${actual}"
     else
-        echo "${input} => ${expected} expected, but got ${actual}"
+        echo " \e[0;31m[FAIL]\e[m ${input} => ${expected} expected, but got ${actual}"
         exit 1
     fi
+
+    rm -Rf ${ASSEMBLY} ${EXEC}
 }
 
 test_mincc "return 0;"   0
@@ -116,4 +124,3 @@ test_mincc "x = 1; return x + 3; return x + 1;" 4
 test_mincc "x = five(); y = one(); return x+y;"  6
 test_mincc "x = five(); return x+five();"       10
 
-echo "OK"
