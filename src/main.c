@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <ctype.h>
 #include <stdarg.h>
 
@@ -41,6 +42,7 @@ typedef enum {
     TOKEN_LPAREN,
     TOKEN_RPAREN,
     TOKEN_SEMICOLON,
+    TOKEN_RETURN,
     TOKEN_EOF
 } TokenType;
 
@@ -52,7 +54,7 @@ typedef struct {
 Vector* tokenize(FILE* file_ptr);
 Token* read_token(FILE* file_ptr);
 Token* read_token_int(FILE* file_ptr);
-Token* read_token_ident(FILE* file_ptr);
+Token* read_token_keyword_or_ident(FILE* file_ptr);
 void skip_spaces(FILE* file_ptr);
 Token* token_new(TokenType type);
 void tokens_delete(Vector* tokens);
@@ -85,7 +87,10 @@ typedef enum {
     AST_DIV,
     AST_MOD,
     AST_POSI,
-    AST_NEGA
+    AST_NEGA,
+    AST_RETURN_STMT,
+    AST_NULL_STMT,
+    AST_EXPR_STMT,
 } AstType;
 
 typedef struct _Ast {
@@ -96,7 +101,9 @@ typedef struct _Ast {
 } Ast;
 
 Vector* parse(Vector* tokens);
-Ast* parse_statement(Vector* tokens, size_t* pos);
+Ast* parse_stmt(Vector* tokens, size_t* pos);
+Ast* parse_expr_stmt(Vector* tokens, size_t* pos);
+Ast* parse_jump_stmt(Vector* tokens, size_t* pos);
 Ast* parse_expr(Vector* tokens, size_t* pos);
 Ast* parse_assignment_expr(Vector* tokens, size_t* pos);
 Ast* parse_logical_or_expr(Vector* tokens, size_t* pos);
@@ -128,7 +135,10 @@ typedef struct {
 void print_code(Vector* asts);
 void put_code(FILE* file_ptr, Vector* codes);
 
-void gen_code(Ast* ast, CodeEnvironment* env);
+void gen_stmt_code(Ast* ast, CodeEnvironment* env);
+void gen_expr_stmt_code(Ast* ast, CodeEnvironment* env);
+void gen_jump_stmt_code(Ast* ast, CodeEnvironment* env);
+void gen_expr_code(Ast* ast, CodeEnvironment* env);
 void gen_assignment_expr_code(Ast* ast, CodeEnvironment* env);
 void gen_logical_expr_code(Ast* ast, CodeEnvironment* env);
 void gen_bitwise_expr_code(Ast* ast, CodeEnvironment* env);
@@ -138,6 +148,8 @@ void gen_arithmetical_expr_code(Ast* ast, CodeEnvironment* env);
 void gen_unary_expr_code(Ast* ast, CodeEnvironment* env);
 void gen_primary_expr_code(Ast* ast, CodeEnvironment* env);
 
+int is_expr_stmt(AstType type);
+int is_jump_stmt(AstType type);
 int is_assignment_expr(AstType type);
 int is_logical_expr(AstType type);
 int is_bitwise_expr(AstType type);
@@ -179,7 +191,7 @@ Token* read_token(FILE* file_ptr) {
         return read_token_int(file_ptr);
     } else if (isalpha(fst) || fst == '_') {
         ungetc(fst, file_ptr);
-        return read_token_ident(file_ptr);
+        return read_token_keyword_or_ident(file_ptr);
     }
 
     char snd = '\0';
@@ -279,27 +291,37 @@ Token* read_token_int(FILE* file_ptr) {
     return token;
 }
 
-Token* read_token_ident(FILE* file_ptr) {
+Token* read_token_keyword_or_ident(FILE* file_ptr) {
     size_t len = 0, capacity = 2;
-    char* value = (char*)safe_malloc((capacity+1)*sizeof(char));
+    char* value = (char*)safe_malloc((capacity)*sizeof(char));
+
+    char c = fgetc(file_ptr);
+    assert_lexicon(isalpha(c) || c == '_');
+    value[len] = c;
+    len++;
     while(1) {
-        char c = fgetc(file_ptr);
+        c = fgetc(file_ptr);
         if (!isalnum(c) && c != '_') {
             ungetc(c, file_ptr);
             break;
         }
         value[len] = c;
         len++;
-        if (len == capacity) {
+        if (len + 1 == capacity) {
             capacity *= 2;
-            value = (char*)safe_realloc(value, (capacity+1)*sizeof(char));
+            value = (char*)safe_realloc(value, (capacity)*sizeof(char));
         }
     }
     value[len] = '\0';
     value = (char*)safe_realloc(value, (len+1)*sizeof(char));
 
-    Token* token = token_new(TOKEN_IDENT);
-    token->value.value_ident = value;
+    Token* token = NULL;
+    if (strcmp(value, "return") == 0) {
+        token = token_new(TOKEN_RETURN);
+    } else {
+        token = token_new(TOKEN_IDENT);
+        token->value.value_ident = value;
+    }
     return token;
 }
 
@@ -335,24 +357,60 @@ Vector* parse(Vector* tokens) {
     while (1) {
         Token* token = (Token*)vector_at(tokens, pos);
         if (token->type == TOKEN_EOF) break;
-        Ast* ast = parse_statement(tokens, &pos);
-        if (ast != NULL) vector_push_back(asts, ast);
+        Ast* ast = parse_stmt(tokens, &pos);
+        vector_push_back(asts, ast);
     }
     return asts;
 }
 
-Ast* parse_statement(Vector* tokens, size_t* pos) {
+Ast* parse_stmt(Vector* tokens, size_t* pos) {
+    Token* token = (Token*)vector_at(tokens, *pos);
+    if (token->type == TOKEN_RETURN) {
+        return parse_jump_stmt(tokens, pos);
+    } else {
+        return parse_expr_stmt(tokens, pos);
+    }
+}
+
+Ast* parse_expr_stmt(Vector* tokens, size_t* pos) {
+    Ast* ast = NULL;
+    Ast* expr = NULL;
+
     Token* token = (Token*)vector_at(tokens, *pos);
     if (token->type == TOKEN_SEMICOLON) {
         (*pos)++;
-        return NULL;
+        ast = ast_new(AST_NULL_STMT);
+    } else {
+        expr = parse_expr(tokens, pos);
+        token = (Token*)vector_at(tokens, *pos);
+        (*pos)++;
+        assert_syntax(token->type == TOKEN_SEMICOLON);
+        ast = ast_new(AST_EXPR_STMT);
+        ast->lhs = expr;
     }
+    return ast;
+}
 
-    Ast* expr = parse_expr(tokens, pos);
-    token = (Token*)vector_at(tokens, *pos);
+Ast* parse_jump_stmt(Vector* tokens, size_t* pos) {
+    Ast* ast = NULL;
+    Ast* expr = NULL;
+
+    Token* token = (Token*)vector_at(tokens, *pos);
     (*pos)++;
-    assert_syntax(token->type == TOKEN_SEMICOLON);
-    return expr;
+    switch (token->type) {
+        case TOKEN_RETURN:
+            expr = parse_expr(tokens, pos);
+            token = (Token*)vector_at(tokens, *pos);
+            (*pos)++;
+            assert_syntax(token->type == TOKEN_SEMICOLON);
+            ast = ast_new(AST_RETURN_STMT);
+            ast->lhs = expr;
+            break;
+        default:
+            assert_syntax(0);
+            break;
+    }
+    return ast;
 }
 
 Ast* parse_expr(Vector* tokens, size_t* pos) {
@@ -767,18 +825,18 @@ void print_code(Vector* asts) {
 
     size_t i = 0, size = asts->size;
     for (i = 0; i < size; i++) {
-        gen_code(vector_at(asts, i), &env);
-        append_code(env.codes, "\tpop %%rax\n");
+        gen_stmt_code(vector_at(asts, i), &env);
     }
 
     Vector* header_codes = vector_new();
-    append_code(header_codes, ".global _main\n");
+    append_code(header_codes, "\t.global _main\n");
     append_code(header_codes, "_main:\n");
     append_code(header_codes, "\tpush %%rbp\n");
     append_code(header_codes, "\tmov %%rsp, %%rbp\n");
     append_code(header_codes, "\tsub $%d, %%rsp\n", env.stack_offset);
 
     Vector* footer_codes = vector_new();
+    append_code(footer_codes, ".L_main_return:\n");
     append_code(footer_codes, "\tmov %%rbp, %%rsp\n");
     append_code(footer_codes, "\tpop %%rbp\n");
     append_code(footer_codes, "\tret\n");
@@ -801,7 +859,47 @@ void put_code(FILE* file_ptr, Vector* codes) {
     }
 }
 
-void gen_code(Ast* ast, CodeEnvironment* env) {
+void gen_stmt_code(Ast* ast, CodeEnvironment* env) {
+    AstType type = ast->type;
+
+    if (is_expr_stmt(type)) {
+        gen_expr_stmt_code(ast, env);
+    } else if (is_jump_stmt(type)) {
+        gen_jump_stmt_code(ast, env);
+    } else  {
+        assert_code_gen(0);
+    }
+}
+
+void gen_expr_stmt_code(Ast* ast, CodeEnvironment* env) {
+    switch (ast->type) {
+        case AST_EXPR_STMT:
+            gen_expr_code(ast->lhs, env);
+            append_code(env->codes, "\tadd $8, %%rsp\n");
+            break;
+        case AST_NULL_STMT:
+            append_code(env->codes, "\tnop\n");
+            break;
+        default:
+            assert_code_gen(0);
+            break;
+    }
+}
+
+void gen_jump_stmt_code(Ast* ast, CodeEnvironment* env) {
+    switch (ast->type) {
+        case AST_RETURN_STMT:
+            gen_expr_code(ast->lhs, env);
+            append_code(env->codes, "\tpop %%rax\n");
+            append_code(env->codes, "\tjmp .L_main_return\n");
+            break;
+        default:
+            assert_code_gen(0);
+            break;
+    }
+}
+
+void gen_expr_code(Ast* ast, CodeEnvironment* env) {
     AstType type = ast->type;
 
     if (is_assignment_expr(type)) {
@@ -826,7 +924,7 @@ void gen_code(Ast* ast, CodeEnvironment* env) {
 }
 
 void gen_assignment_expr_code(Ast* ast, CodeEnvironment* env) {
-    gen_code(ast->rhs, env);
+    gen_expr_code(ast->rhs, env);
     append_code(env->codes, "\tpop %%rax\n");
 
     assert_code_gen(ast->lhs->type == AST_VAR);
@@ -852,7 +950,7 @@ void gen_assignment_expr_code(Ast* ast, CodeEnvironment* env) {
 void gen_logical_expr_code(Ast* ast, CodeEnvironment* env) {
     int exit_labno = env->num_labels; env->num_labels++;
 
-    gen_code(ast->lhs, env);
+    gen_expr_code(ast->lhs, env);
     append_code(env->codes, "\tpop %%rax\n");
     append_code(env->codes, "\tcmp $0, %%rax\n");
 
@@ -867,7 +965,7 @@ void gen_logical_expr_code(Ast* ast, CodeEnvironment* env) {
             assert_code_gen(0);
     }
 
-    gen_code(ast->rhs, env);
+    gen_expr_code(ast->rhs, env);
     append_code(env->codes, "\tpop %%rax\n");
     append_code(env->codes, "\tcmp $0, %%rax\n");
 
@@ -878,8 +976,8 @@ void gen_logical_expr_code(Ast* ast, CodeEnvironment* env) {
 }
 
 void gen_bitwise_expr_code(Ast* ast, CodeEnvironment* env) {
-    gen_code(ast->lhs, env);
-    gen_code(ast->rhs, env);
+    gen_expr_code(ast->lhs, env);
+    gen_expr_code(ast->rhs, env);
 
     append_code(env->codes, "\tpop %%rdi\n");
     append_code(env->codes, "\tpop %%rax\n");
@@ -900,8 +998,8 @@ void gen_bitwise_expr_code(Ast* ast, CodeEnvironment* env) {
 }
 
 void gen_comparative_expr_code(Ast* ast, CodeEnvironment* env) {
-    gen_code(ast->lhs, env);
-    gen_code(ast->rhs, env);
+    gen_expr_code(ast->lhs, env);
+    gen_expr_code(ast->rhs, env);
 
     append_code(env->codes, "\tpop %%rdi\n");
     append_code(env->codes, "\tpop %%rax\n");
@@ -933,8 +1031,8 @@ void gen_comparative_expr_code(Ast* ast, CodeEnvironment* env) {
 }
 
 void gen_shift_expr_code(Ast* ast, CodeEnvironment* env) {
-    gen_code(ast->lhs, env);
-    gen_code(ast->rhs, env);
+    gen_expr_code(ast->lhs, env);
+    gen_expr_code(ast->rhs, env);
 
     append_code(env->codes, "\tpop %%rcx\n");
     append_code(env->codes, "\tpop %%rax\n");
@@ -952,8 +1050,8 @@ void gen_shift_expr_code(Ast* ast, CodeEnvironment* env) {
 }
 
 void gen_arithmetical_expr_code(Ast* ast, CodeEnvironment* env) {
-    gen_code(ast->lhs, env);
-    gen_code(ast->rhs, env);
+    gen_expr_code(ast->lhs, env);
+    gen_expr_code(ast->rhs, env);
 
     append_code(env->codes, "\tpop %%rdi\n");
     append_code(env->codes, "\tpop %%rax\n");
@@ -986,7 +1084,7 @@ void gen_arithmetical_expr_code(Ast* ast, CodeEnvironment* env) {
 }
 
 void gen_unary_expr_code(Ast* ast, CodeEnvironment* env) {
-    gen_code(ast->lhs, env);
+    gen_expr_code(ast->lhs, env);
 
     switch (ast->type) {
         case AST_POSI:
@@ -1029,6 +1127,14 @@ void gen_primary_expr_code(Ast* ast, CodeEnvironment* env) {
         default:
             assert_code_gen(0);
     }
+}
+
+int is_expr_stmt(AstType type) {
+    return type == AST_EXPR_STMT || type == AST_NULL_STMT;
+}
+
+int is_jump_stmt(AstType type) {
+    return type == AST_RETURN_STMT;
 }
 
 int is_assignment_expr(AstType type) {
