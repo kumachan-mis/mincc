@@ -42,9 +42,9 @@ vector_item_t vector_at(Vector* vector, size_t index) {
 }
 
 void vector_delete(Vector* vector) {
-    size_t capacity = vector->capacity;
+    size_t size = vector->size;
     size_t i;
-    for (i = 0; i < capacity; ++i) {
+    for (i = 0; i < size; ++i) {
         free(vector->data[i]);
     }
     free(vector->data);
