@@ -5,9 +5,11 @@ test_mincc() {
     ASSEMBLY=./build/out.s
     EXEC=./build/out
 
+    TESTLIB=./test/testlib.c
+
     input=$1
     echo ${input} | ${MINCC} ${input} > ${ASSEMBLY}
-    gcc-9 ${ASSEMBLY} -o ${EXEC}
+    gcc-9 ${ASSEMBLY} ${TESTLIB} -o ${EXEC}
     ${EXEC}
 
     actual=$?
@@ -107,8 +109,11 @@ test_mincc "a = 5;b = 2;c = 6; return (a + c)*b*b;"         44
 test_mincc "a = 5;b = 12; c=13; return a*a+b*b == c*c;"      1
 test_mincc "x = 1;y = 3; x = x + y; y = x + y; return x*y;" 28
 
-test_mincc "; x = 1;; return x + 1;" 2
-
+test_mincc "; x = 1;; return x + 1;"            2
 test_mincc "x = 1; return x + 3; return x + 1;" 4
+
+
+test_mincc "x = five(); y = one(); return x+y;"  6
+test_mincc "x = five(); return x+five();"       10
 
 echo "OK"

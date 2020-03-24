@@ -88,6 +88,7 @@ typedef enum {
     AST_MOD,
     AST_POSI,
     AST_NEGA,
+    AST_CALL,
     AST_RETURN_STMT,
     AST_NULL_STMT,
     AST_EXPR_STMT,
@@ -117,6 +118,7 @@ Ast* parse_shift_expr(Vector* tokens, size_t* pos);
 Ast* parse_additive_expr(Vector* tokens, size_t* pos);
 Ast* parse_multiplicative_expr(Vector* tokens, size_t* pos);
 Ast* parse_unary_expr(Vector* tokens, size_t* pos);
+Ast* parse_postfix_expr(Vector* tokens, size_t* pos);
 Ast* parse_primary_expr(Vector* tokens, size_t* pos);
 Ast* ast_new(AstType type);
 void ast_delete(Ast* ast);
@@ -146,6 +148,7 @@ void gen_comparative_expr_code(Ast* ast, CodeEnvironment* env);
 void gen_shift_expr_code(Ast* ast, CodeEnvironment* env);
 void gen_arithmetical_expr_code(Ast* ast, CodeEnvironment* env);
 void gen_unary_expr_code(Ast* ast, CodeEnvironment* env);
+void gen_postfix_expr_code(Ast* ast, CodeEnvironment* env);
 void gen_primary_expr_code(Ast* ast, CodeEnvironment* env);
 
 int is_expr_stmt(AstType type);
@@ -157,6 +160,7 @@ int is_comparative_expr(AstType type);
 int is_shift_expr(AstType type);
 int is_arithmetical_expr(AstType type);
 int is_unary_expr(AstType type);
+int is_postfix_expr(AstType type);
 int is_primary_expr(AstType type);
 
 void append_code(Vector* codes, char* format, ...);
@@ -408,7 +412,6 @@ Ast* parse_jump_stmt(Vector* tokens, size_t* pos) {
             break;
         default:
             assert_syntax(0);
-            break;
     }
     return ast;
 }
@@ -753,10 +756,36 @@ Ast* parse_unary_expr(Vector* tokens, size_t* pos) {
             break;
         default:
             (*pos)--;
-            ast = parse_primary_expr(tokens, pos);
+            ast = parse_postfix_expr(tokens, pos);
             break;
     }
     return ast;
+}
+
+Ast* parse_postfix_expr(Vector* tokens, size_t* pos) {
+    Ast* ast = parse_primary_expr(tokens, pos);
+    Ast* lhs = NULL;
+    Ast* rhs = NULL;
+
+    while (1) {
+        Token* token = (Token*)vector_at(tokens, *pos);
+        (*pos)++;
+        switch (token->type) {
+            case TOKEN_LPAREN:
+                lhs = ast;
+                ast = ast_new(AST_CALL);
+                ast->lhs = lhs;
+                ast->rhs = rhs;
+                token = (Token*)vector_at(tokens, *pos);
+                (*pos)++;
+                assert_syntax(token->type == TOKEN_RPAREN);
+                break;
+            default:
+                (*pos)--;
+                return ast;
+        }
+    }
+
 }
 
 Ast* parse_primary_expr(Vector* tokens, size_t* pos) {
@@ -780,7 +809,6 @@ Ast* parse_primary_expr(Vector* tokens, size_t* pos) {
             break;
         default:
             assert_syntax(0);
-            break;
     }
     return ast;
 }
@@ -916,6 +944,8 @@ void gen_expr_code(Ast* ast, CodeEnvironment* env) {
         gen_arithmetical_expr_code(ast, env);
     } else if (is_unary_expr(type)) {
         gen_unary_expr_code(ast, env);
+    } else if (is_postfix_expr(type)) {
+        gen_postfix_expr_code(ast, env);
     } else if (is_primary_expr(type)) {
         gen_primary_expr_code(ast, env);
     } else  {
@@ -1112,6 +1142,18 @@ void gen_unary_expr_code(Ast* ast, CodeEnvironment* env) {
     }
 }
 
+void gen_postfix_expr_code(Ast* ast, CodeEnvironment* env) {
+    switch (ast->type) {
+        case AST_CALL:
+            assert_code_gen(ast->lhs->type == AST_VAR);
+            append_code(env->codes, "\tcall _%s\n", ast->lhs->value.value_ident);
+            append_code(env->codes, "\tpush %%rax\n");
+            break;
+        default:
+            assert_code_gen(0);
+    }
+}
+
 void gen_primary_expr_code(Ast* ast, CodeEnvironment* env) {
     switch (ast->type) {
         case AST_INT:
@@ -1167,6 +1209,10 @@ int is_arithmetical_expr(AstType type) {
 int is_unary_expr(AstType type) {
     return type == AST_POSI || type == AST_NEGA ||
            type == AST_NOT  || type == AST_LNOT;
+}
+
+int is_postfix_expr(AstType type) {
+    return type == AST_CALL;
 }
 
 int is_primary_expr(AstType type) {
