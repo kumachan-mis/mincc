@@ -1247,6 +1247,6 @@ void append_code(Vector* codes, char* format, ...) {
 
 void assert_code_gen(int condition) {
     if (condition) return;
-    fprintf(stderr, "Error: fail to generate code: %d\n");
+    fprintf(stderr, "Error: fail to generate code\n");
     exit(1);
 }

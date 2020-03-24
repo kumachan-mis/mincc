@@ -11,7 +11,7 @@ test_mincc() {
     echo ${input} | ${MINCC} ${input} > ${ASSEMBLY}
 
     if [ $? -ne 0 ]; then
-        echo " \e[0;31m[FAIL]\e[m ${input} => ${expected} expected, but failed to compile"
+        echo "\e[0;31m[FAIL]\e[m ${input} => ${expected} expected, but failed to compile"
         exit 1
     fi
 
@@ -21,9 +21,9 @@ test_mincc() {
     actual=$?
     expected=$2
     if [ ${actual} = ${expected} ]; then
-        echo " \e[0;32m[PASS]\e[m ${input} => ${actual}"
+        echo "\e[0;32m[PASS]\e[m ${input} => ${actual}"
     else
-        echo " \e[0;31m[FAIL]\e[m ${input} => ${expected} expected, but got ${actual}"
+        echo "\e[0;31m[FAIL]\e[m ${input} => ${expected} expected, but got ${actual}"
         exit 1
     fi
 
