@@ -125,3 +125,14 @@ test_mincc "x = five(); y = one(); return x+y;"                     6
 test_mincc "x = five(); return x+five();"                          10
 test_mincc "x = 6; y = -3; z = 4; return sum(x, y, z, x, -y, -z);" 12
 test_mincc "x = 6; y = 2; return square(x*y);"                    144
+
+test_mincc "x = 0; y = 3; if (x == 0) y = 2*y; return y;"                 6
+test_mincc "x = 1; y = 3; if (x == 0) y = 2*y; return y;"                 3
+test_mincc "x = 1; y = 3; if (x == 0) y = 2*y; else y = y / 2; return y;" 1
+
+test_mincc "x = 0;   if (x < 10) return 1; else if (x < 100) return 2; return 3;" 1
+test_mincc "x = 9;   if (x < 10) return 1; else if (x < 100) return 2; return 3;" 1
+test_mincc "x = 10;  if (x < 10) return 1; else if (x < 100) return 2; return 3;" 2
+test_mincc "x = 99;  if (x < 10) return 1; else if (x < 100) return 2; return 3;" 2
+test_mincc "x = 100; if (x < 10) return 1; else if (x < 100) return 2; return 3;" 3
+test_mincc "x = 379; if (x < 10) return 1; else if (x < 100) return 2; return 3;" 3
