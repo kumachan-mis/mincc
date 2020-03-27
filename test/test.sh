@@ -139,3 +139,19 @@ test_mincc "x = 379; if (x < 10) return 1; else if (x < 100) return 2; return 3;
 
 test_mincc "x = 3; while (x < 50) x = put_int(x*x); return x + 1;" 82
 test_mincc "x = 1; while (x <  1) x = put_int(x*x); return x + 1;"  2
+
+test_mincc "
+    sum = 0; n = 5;
+    for (n=1; n<=10; n = n+1) sum = n + sum;
+    return sum;"                                                     55
+test_mincc "
+    sum = 0; n = 1;
+    for (; n <= 10; n = n+1) sum = n + sum;
+    return sum;"                                                     55
+test_mincc "
+    n = 1; for (;n <= 10;) n = n + 1;
+    return 2*n;"                                                     22
+test_mincc "
+    ret = 0; i = 0; j = 2;
+    for (; i < 8; i = i+2) for (j=0; j < 8; j = j+1) ret = ret + 1;
+    return ret;"                                                     32

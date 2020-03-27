@@ -9,6 +9,7 @@
 typedef enum {
     // keyword
     TOKEN_ELSE,
+    TOKEN_FOR,
     TOKEN_IF,
     TOKEN_RETURN,
     TOKEN_WHILE,
