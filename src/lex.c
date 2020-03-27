@@ -51,7 +51,11 @@ Token* read_token(FILE* file_ptr) {
 Token* read_token_keyword_or_ident(FILE* file_ptr) {
     Token* token = NULL;
     char* value_ident = read_value_ident(file_ptr);
-    if (strcmp(value_ident, "return") == 0) {
+    if (strcmp(value_ident, "else") == 0) {
+        token = token_new(TOKEN_ELSE);
+    } else if (strcmp(value_ident, "if") == 0) {
+        token = token_new(TOKEN_IF);
+    } else if (strcmp(value_ident, "return") == 0) {
         token = token_new(TOKEN_RETURN);
     } else {
         token = token_new(TOKEN_IDENT);

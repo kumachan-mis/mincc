@@ -8,6 +8,8 @@
 
 typedef enum {
     // keyword
+    TOKEN_ELSE,
+    TOKEN_IF,
     TOKEN_RETURN,
 
     // identifier

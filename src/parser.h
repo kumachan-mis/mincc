@@ -50,19 +50,22 @@ typedef enum {
     AST_XOR,
     AST_OR,
 
-    // logical-expression,
+    // logical-expression
     AST_LAND,
     AST_LOR,
 
     // assignment-expression
     AST_ASSIGN,
 
-    // jump-statement
-    AST_RETURN_STMT,
-
     // expression-statement
     AST_NULL_STMT,
     AST_EXPR_STMT,
+
+    // selection-statement
+    AST_IF_STMT,
+
+    // jump-statement
+    AST_RETURN_STMT,
 } AstType;
 
 
@@ -98,8 +101,9 @@ int is_relational_expr(AstType type);
 int is_bitwise_expr(AstType type);
 int is_logical_expr(AstType type);
 int is_assignment_expr(AstType type);
-int is_jump_stmt(AstType type);
 int is_expr_stmt(AstType type);
+int is_selection_stmt(AstType type);
+int is_jump_stmt(AstType type);
 
 
 #endif  // _PARSER_H_
