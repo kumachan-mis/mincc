@@ -16,7 +16,7 @@ test_mincc() {
     fi
 
     gcc-9 ${ASSEMBLY} ${TESTLIB} -o ${EXEC}
-    ${EXEC}
+    ${EXEC} > /dev/null
 
     actual=$?
     expected=$2
@@ -137,5 +137,5 @@ test_mincc "x = 99;  if (x < 10) return 1; else if (x < 100) return 2; return 3;
 test_mincc "x = 100; if (x < 10) return 1; else if (x < 100) return 2; return 3;" 3
 test_mincc "x = 379; if (x < 10) return 1; else if (x < 100) return 2; return 3;" 3
 
-test_mincc "x = 1; while (x < 10) x = 2*x; return x + 1;" 17
-test_mincc "x = 1; while (x < 1) x = 2*x; return x + 1;" 2
+test_mincc "x = 3; while (x < 50) x = put_int(x*x); return x + 1;" 82
+test_mincc "x = 1; while (x <  1) x = put_int(x*x); return x + 1;"  2
