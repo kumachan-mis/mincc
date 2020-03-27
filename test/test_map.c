@@ -1,7 +1,7 @@
 #include <assert.h>
 #include <stdio.h>
-#include "../src/mincc_map.h"
-#include "../src/mincc_memory.h"
+#include "../src/map.h"
+#include "../src/memory.h"
 
 
 int main() {

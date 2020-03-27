@@ -1,9 +1,9 @@
-#include "mincc_map.h"
+#include "map.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "mincc_memory.h"
+#include "memory.h"
 
 
 Map* map_extend(Map* map);

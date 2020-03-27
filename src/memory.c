@@ -1,7 +1,8 @@
-#include "mincc_memory.h"
+#include "memory.h"
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 
 void* safe_malloc(size_t size) {
