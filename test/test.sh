@@ -137,8 +137,10 @@ test_mincc "x = 99;  if (x < 10) return 1; else if (x < 100) return 2; return 3;
 test_mincc "x = 100; if (x < 10) return 1; else if (x < 100) return 2; return 3;" 3
 test_mincc "x = 379; if (x < 10) return 1; else if (x < 100) return 2; return 3;" 3
 
-test_mincc "x = 3; while (x < 50) x = put_int(x*x); return x + 1;" 82
-test_mincc "x = 1; while (x <  1) x = put_int(x*x); return x + 1;"  2
+test_mincc "x = 3; while (x < 50) x = put_int(x*x); return x + 1;"     82
+test_mincc "x = 2; while (x <  1) x = put_int(x*x); return x + 1;"      3
+test_mincc "x = 3; do x = put_int(x*x); while (x < 50); return x + 1;" 82
+test_mincc "x = 2; do x = put_int(x*x); while (x <  1); return x + 1;"  5
 
 test_mincc "
     sum = 0; n = 5;

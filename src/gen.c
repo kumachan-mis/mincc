@@ -364,7 +364,7 @@ void gen_expr_stmt_code(Ast* ast, CodeEnvironment* env) {
     Ast* child = NULL;
 
     switch (ast->type) {
-        case AST_EXPR_STMT: 
+        case AST_EXPR_STMT:
             child = ast_nth_child(ast, 0);
             gen_expr_code(child, env);
             if (!is_null_expr(child->type)) {
@@ -420,6 +420,14 @@ void gen_iteration_stmt_code(Ast* ast, CodeEnvironment* env) {
             gen_stmt_code(ast_nth_child(ast, 1), env);
             append_code(env->codes, "\tjmp .L%d\n", entry_labno);
             append_code(env->codes, ".L%d:\n",   exit_labno);
+            break;
+        case AST_DOWHILE_STMT:
+            append_code(env->codes, ".L%d:\n",   entry_labno);
+            gen_stmt_code(ast_nth_child(ast, 0), env);
+            gen_expr_code(ast_nth_child(ast, 1), env);
+            append_code(env->codes, "\tpop %%rax\n");
+            append_code(env->codes, "\tcmp $0, %%rax\n");
+            append_code(env->codes, "\tjne .L%d\n", entry_labno);
             break;
         case AST_FOR_STMT:
             child = ast_nth_child(ast, 0);
