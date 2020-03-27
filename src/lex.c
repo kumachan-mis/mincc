@@ -157,6 +157,8 @@ Token* read_token_punct(FILE* file_ptr) {
             return token_new(TOKEN_LPAREN);
         case ')':
             return token_new(TOKEN_RPAREN);
+        case ',':
+            return token_new(TOKEN_COMMA);
         case ';':
             return token_new(TOKEN_SEMICOLON);
         case EOF:

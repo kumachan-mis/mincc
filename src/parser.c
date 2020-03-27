@@ -8,6 +8,7 @@
 // expression-parser
 Ast* parse_primary_expr(TokenList* tokenlist);
 Ast* parse_postfix_expr(TokenList* tokenlist);
+Ast* parse_arg_expr_list(TokenList* tokenlist);
 Ast* parse_unary_expr(TokenList* tokenlist);
 Ast* parse_multiplicative_expr(TokenList* tokenlist);
 Ast* parse_additive_expr(TokenList* tokenlist);
@@ -83,7 +84,7 @@ Ast* parse_postfix_expr(TokenList* tokenlist) {
         switch (token->type) {
             case TOKEN_LPAREN:
                 tokenlist_pop(tokenlist);
-                ast = ast_new(AST_CALL, 1, ast);
+                ast = ast_new(AST_CALL, 2, ast, parse_arg_expr_list(tokenlist));
                 token = tokenlist_top(tokenlist);
                 tokenlist_pop(tokenlist);
                 assert_syntax(token->type == TOKEN_RPAREN);
@@ -91,6 +92,23 @@ Ast* parse_postfix_expr(TokenList* tokenlist) {
             default:
                 return ast;
         }
+    }
+}
+
+Ast* parse_arg_expr_list(TokenList* tokenlist) {
+    Ast* ast = ast_new(AST_ARG_LIST, 0);
+    Token* token = tokenlist_top(tokenlist);
+    if (token->type == TOKEN_RPAREN) return ast;
+    
+    Vector* children = ast->children;
+    vector_push_back(children, parse_assignment_expr(tokenlist));
+    while (1) {
+        token = tokenlist_top(tokenlist);
+        if (token->type == TOKEN_RPAREN) return ast;
+    
+        tokenlist_pop(tokenlist);
+        assert_syntax(token->type == TOKEN_COMMA);
+        vector_push_back(children, parse_assignment_expr(tokenlist));
     }
 }
 
