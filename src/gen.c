@@ -59,7 +59,7 @@ void print_code(AstList* astlist) {
     append_code(header_codes, "_main:\n");
     append_code(header_codes, "\tpush %%rbp\n");
     append_code(header_codes, "\tmov %%rsp, %%rbp\n");
-    append_code(header_codes, "\tsub $%d, %%rsp\n", env->stack_offset);
+    append_code(header_codes, "\tsub $%d, %%rsp\n", (env->stack_offset + 15) / 16 * 16);
 
     Vector* footer_codes = vector_new();
     append_code(footer_codes, ".L_main_return:\n");
