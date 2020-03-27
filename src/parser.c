@@ -26,6 +26,7 @@ Ast* parse_expr(TokenList* tokenlist);
 // statement-parser
 Ast* parse_expr_stmt(TokenList* tokenlist);
 Ast* parse_selection_stmt(TokenList* tokenlist);
+Ast* parse_iteration_stmt(TokenList* tokenlist);
 Ast* parse_jump_stmt(TokenList* tokenlist);
 Ast* parse_stmt(TokenList* tokenlist);
 
@@ -407,6 +408,33 @@ Ast* parse_selection_stmt(TokenList* tokenlist) {
     return ast;
 }
 
+Ast* parse_iteration_stmt(TokenList* tokenlist) {
+    Ast* ast = NULL;
+
+    Token* token = tokenlist_top(tokenlist);
+    tokenlist_pop(tokenlist);
+    switch (token->type) {
+        case TOKEN_WHILE:
+            ast = ast_new(AST_WHILE_STMT, 0);
+
+            token = tokenlist_top(tokenlist);
+            tokenlist_pop(tokenlist);
+            assert_syntax(token->type == TOKEN_LPAREN);
+
+            ast_append_child(ast, parse_expr(tokenlist));
+
+            token = tokenlist_top(tokenlist);
+            tokenlist_pop(tokenlist);
+            assert_syntax(token->type == TOKEN_RPAREN);
+
+            ast_append_child(ast, parse_stmt(tokenlist));
+            break;
+        default:
+            assert_syntax(0);
+    }
+    return ast;
+}
+
 Ast* parse_jump_stmt(TokenList* tokenlist) {
     Ast* ast = NULL;
 
@@ -431,6 +459,8 @@ Ast* parse_stmt(TokenList* tokenlist) {
     Token* token = tokenlist_top(tokenlist);
     if (token->type == TOKEN_IF) {
         return parse_selection_stmt(tokenlist);
+    } else if (token->type == TOKEN_WHILE) {
+        return parse_iteration_stmt(tokenlist);
     } else if (token->type == TOKEN_RETURN) {
         return parse_jump_stmt(tokenlist);
     } else {
@@ -560,6 +590,10 @@ int is_expr_stmt(AstType type) {
 
 int is_selection_stmt(AstType type) {
     return type == AST_IF_STMT;
+}
+
+int is_iteration_stmt(AstType type) {
+    return type == AST_WHILE_STMT;
 }
 
 int is_jump_stmt(AstType type) {
