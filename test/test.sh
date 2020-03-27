@@ -121,6 +121,7 @@ test_mincc "; x = 1;; return x + 1;"            2
 test_mincc "x = 1; return x + 3; return x + 1;" 4
 
 
-test_mincc "x = five(); y = one(); return x+y;"  6
-test_mincc "x = five(); return x+five();"       10
-
+test_mincc "x = five(); y = one(); return x+y;"                     6
+test_mincc "x = five(); return x+five();"                          10
+test_mincc "x = 6; y = -3; z = 4; return sum(x, y, z, x, -y, -z);" 12
+test_mincc "x = 6; y = 2; return square(x*y);"                    144

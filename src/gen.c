@@ -13,6 +13,7 @@ void put_code(FILE* file_ptr, Vector* codes);
 // expression-code-generator
 void gen_primary_expr_code(Ast* ast, CodeEnvironment* env);
 void gen_postfix_expr_code(Ast* ast, CodeEnvironment* env);
+void gen_arg_expr_list_code(Ast* ast, CodeEnvironment* env);
 void gen_unary_expr_code(Ast* ast, CodeEnvironment* env);
 void gen_arithmetical_expr_code(Ast* ast, CodeEnvironment* env);
 void gen_shift_expr_code(Ast* ast, CodeEnvironment* env);
@@ -99,16 +100,30 @@ void gen_primary_expr_code(Ast* ast, CodeEnvironment* env) {
 }
 
 void gen_postfix_expr_code(Ast* ast, CodeEnvironment* env) {
-    Ast* child = ast_nth_child(ast, 0);
+    Ast* lhs = ast_nth_child(ast, 0);
+    Ast* rhs = ast_nth_child(ast, 1);
 
     switch (ast->type) {
         case AST_CALL:
-            assert_code_gen(child->type == AST_VAR);
-            append_code(env->codes, "\tcall _%s\n", child->value_ident);
+            assert_code_gen(lhs->type == AST_VAR);
+            gen_arg_expr_list_code(rhs, env);
+            append_code(env->codes, "\tcall _%s\n", lhs->value_ident);
             append_code(env->codes, "\tpush %%rax\n");
             break;
         default:
             assert_code_gen(0);
+    }
+}
+
+void gen_arg_expr_list_code(Ast* ast, CodeEnvironment* env) {
+    size_t num_args = ast->children->size;
+    assert_code_gen(num_args <= 6);
+
+    char* arg_register[] = { "rdi", "rsi", "rdx", "rcx", "r8", "r9" };
+    size_t i = 0;
+    for (i = 0; i < num_args; i++) {
+        gen_expr_code(ast_nth_child(ast, i), env);
+        append_code(env->codes, "\tpop %%%s\n", arg_register[i]);
     }
 }
 

@@ -41,6 +41,7 @@ typedef enum {
     TOKEN_DBL_BAR,
     TOKEN_SEMICOLON,
     TOKEN_EQ,
+    TOKEN_COMMA,
 
     // eof
     TOKEN_EOF
