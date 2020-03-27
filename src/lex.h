@@ -11,6 +11,7 @@ typedef enum {
     TOKEN_ELSE,
     TOKEN_IF,
     TOKEN_RETURN,
+    TOKEN_WHILE,
 
     // identifier
     TOKEN_IDENT,

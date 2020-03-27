@@ -64,6 +64,9 @@ typedef enum {
     // selection-statement
     AST_IF_STMT,
 
+    // iteration-statement
+    AST_WHILE_STMT,
+
     // jump-statement
     AST_RETURN_STMT,
 } AstType;
@@ -103,6 +106,7 @@ int is_logical_expr(AstType type);
 int is_assignment_expr(AstType type);
 int is_expr_stmt(AstType type);
 int is_selection_stmt(AstType type);
+int is_iteration_stmt(AstType type);
 int is_jump_stmt(AstType type);
 
 

@@ -136,3 +136,6 @@ test_mincc "x = 10;  if (x < 10) return 1; else if (x < 100) return 2; return 3;
 test_mincc "x = 99;  if (x < 10) return 1; else if (x < 100) return 2; return 3;" 2
 test_mincc "x = 100; if (x < 10) return 1; else if (x < 100) return 2; return 3;" 3
 test_mincc "x = 379; if (x < 10) return 1; else if (x < 100) return 2; return 3;" 3
+
+test_mincc "x = 1; while (x < 10) x = 2*x; return x + 1;" 17
+test_mincc "x = 1; while (x < 1) x = 2*x; return x + 1;" 2

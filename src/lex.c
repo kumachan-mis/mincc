@@ -57,6 +57,8 @@ Token* read_token_keyword_or_ident(FILE* file_ptr) {
         token = token_new(TOKEN_IF);
     } else if (strcmp(value_ident, "return") == 0) {
         token = token_new(TOKEN_RETURN);
+    } else if (strcmp(value_ident, "while") == 0) {
+        token = token_new(TOKEN_WHILE);
     } else {
         token = token_new(TOKEN_IDENT);
         token->value_ident = value_ident;

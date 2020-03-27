@@ -26,6 +26,7 @@ void gen_expr_code(Ast* ast, CodeEnvironment* env);
 // statement-code-generator
 void gen_expr_stmt_code(Ast* ast, CodeEnvironment* env);
 void gen_selection_stmt_code(Ast* ast, CodeEnvironment* env);
+void gen_iteration_stmt_code(Ast* ast, CodeEnvironment* env);
 void gen_jump_stmt_code(Ast* ast, CodeEnvironment* env);
 void gen_stmt_code(Ast* ast, CodeEnvironment* env);
 
@@ -389,6 +390,27 @@ void gen_selection_stmt_code(Ast* ast, CodeEnvironment* env) {
     }
 }
 
+void gen_iteration_stmt_code(Ast* ast, CodeEnvironment* env) {
+    switch (ast->type) {
+        case AST_WHILE_STMT: {
+            int entry_labno = env->num_labels; env->num_labels++;
+            int exit_labno = env->num_labels; env->num_labels++;
+            append_code(env->codes, ".L%d:\n",   entry_labno);
+            gen_expr_code(ast_nth_child(ast, 0), env);
+            append_code(env->codes, "\tpop %%rax\n");
+            append_code(env->codes, "\tcmp $0, %%rax\n");
+            append_code(env->codes, "\tje .L%d\n", exit_labno);
+            gen_stmt_code(ast_nth_child(ast, 1), env);
+            append_code(env->codes, "\tjmp .L%d\n", entry_labno);
+            append_code(env->codes, ".L%d:\n",   exit_labno);
+        }
+            break;
+        default:
+            assert_code_gen(0);
+            break;
+    }
+}
+
 void gen_jump_stmt_code(Ast* ast, CodeEnvironment* env) {
     switch (ast->type) {
         case AST_RETURN_STMT:
@@ -409,6 +431,8 @@ void gen_stmt_code(Ast* ast, CodeEnvironment* env) {
         gen_expr_stmt_code(ast, env);
     } else if (is_selection_stmt(type)) {
         gen_selection_stmt_code(ast, env);
+    } else if(is_iteration_stmt(type)) {
+        gen_iteration_stmt_code(ast, env);
     } else if (is_jump_stmt(type)) {
         gen_jump_stmt_code(ast, env);
     } else  {
