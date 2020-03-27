@@ -60,6 +60,9 @@ typedef enum {
     // assignment-expression
     AST_ASSIGN,
 
+    // compound-statement
+    AST_COMP_STMT,
+
     // expression-statement
     AST_EXPR_STMT,
 
@@ -109,6 +112,7 @@ int is_bitwise_expr(AstType type);
 int is_logical_expr(AstType type);
 int is_assignment_expr(AstType type);
 int is_null_expr(AstType type);
+int is_compound_stmt(AstType type);
 int is_expr_stmt(AstType type);
 int is_selection_stmt(AstType type);
 int is_iteration_stmt(AstType type);

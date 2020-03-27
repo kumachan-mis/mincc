@@ -157,3 +157,10 @@ test_mincc "
     ret = 0; i = 0; j = 2;
     for (; i < 8; i = i+2) for (j=0; j < 8; j = j+1) ret = ret + 1;
     return ret;"                                                     32
+test_mincc "
+    sum = 0; n = 1;
+    while (n <= 8) {
+        sum = sum + n*n;
+        n = n + 1;
+    }
+    return sum;"                                                    204                                

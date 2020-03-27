@@ -24,6 +24,7 @@ Ast* parse_assignment_expr(TokenList* tokenlist);
 Ast* parse_expr(TokenList* tokenlist);
 
 // statement-parser
+Ast* parse_compound_stmt(TokenList* tokenlist);
 Ast* parse_expr_stmt(TokenList* tokenlist);
 Ast* parse_selection_stmt(TokenList* tokenlist);
 Ast* parse_iteration_stmt(TokenList* tokenlist);
@@ -352,6 +353,21 @@ Ast* parse_expr(TokenList* tokenlist) {
 }
 
 // statement-parser
+Ast* parse_compound_stmt(TokenList* tokenlist) {
+    Ast* ast = ast_new(AST_COMP_STMT, 0);
+
+    assert_and_pop_token(tokenlist, TOKEN_LBRACE);
+    while (1) {
+        Token* token = tokenlist_top(tokenlist);
+        if (token->type == TOKEN_RBRACE) {
+            tokenlist_pop(tokenlist);
+            break;
+        }
+        ast_append_child(ast, parse_stmt(tokenlist));
+    }
+    return ast;
+}
+
 Ast* parse_expr_stmt(TokenList* tokenlist) {
     Ast* ast = ast_new(AST_EXPR_STMT, 0);
 
@@ -468,7 +484,9 @@ Ast* parse_jump_stmt(TokenList* tokenlist) {
 Ast* parse_stmt(TokenList* tokenlist) {
     Token* token = tokenlist_top(tokenlist);
     TokenType type = token->type;
-    if (type == TOKEN_IF) {
+    if (type == TOKEN_LBRACE) {
+        return parse_compound_stmt(tokenlist);
+    } else if (type == TOKEN_IF) {
         return parse_selection_stmt(tokenlist);
     } else if (
         type == TOKEN_WHILE ||
@@ -604,6 +622,10 @@ int is_null_expr(AstType type) {
 }
 
 // statement-ast-classifier
+int is_compound_stmt(AstType type) {
+    return type == AST_COMP_STMT;
+}
+
 int is_expr_stmt(AstType type) {
     return type == AST_EXPR_STMT;
 }
