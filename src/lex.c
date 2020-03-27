@@ -168,6 +168,10 @@ Token* read_token_punct(FILE* file_ptr) {
             return token_new(TOKEN_LPAREN);
         case ')':
             return token_new(TOKEN_RPAREN);
+        case '{':
+            return token_new(TOKEN_LBRACE);
+        case '}':
+            return token_new(TOKEN_RBRACE);
         case ',':
             return token_new(TOKEN_COMMA);
         case ';':

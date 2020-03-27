@@ -25,6 +25,7 @@ void gen_null_expr_code(Ast* ast, CodeEnvironment* env);
 void gen_expr_code(Ast* ast, CodeEnvironment* env);
 
 // statement-code-generator
+void gen_compound_stmt_code(Ast* ast, CodeEnvironment* env);
 void gen_expr_stmt_code(Ast* ast, CodeEnvironment* env);
 void gen_selection_stmt_code(Ast* ast, CodeEnvironment* env);
 void gen_iteration_stmt_code(Ast* ast, CodeEnvironment* env);
@@ -360,6 +361,20 @@ void gen_expr_code(Ast* ast, CodeEnvironment* env) {
 }
 
 // statement-code-generator
+void gen_compound_stmt_code(Ast* ast, CodeEnvironment* env) {
+    size_t i = 0, size = ast->children->size;
+    switch (ast->type) {
+        case AST_COMP_STMT:
+            for (i = 0; i < size; i++) {
+                gen_stmt_code(ast_nth_child(ast, i), env);
+            }
+            break;
+        default:
+            assert_code_gen(0);
+            break;
+    }
+}
+
 void gen_expr_stmt_code(Ast* ast, CodeEnvironment* env) {
     Ast* child = NULL;
 
@@ -474,7 +489,9 @@ void gen_jump_stmt_code(Ast* ast, CodeEnvironment* env) {
 void gen_stmt_code(Ast* ast, CodeEnvironment* env) {
     AstType type = ast->type;
 
-    if (is_expr_stmt(type)) {
+    if (is_compound_stmt(type)) {
+        gen_compound_stmt_code(ast, env);
+    } else if (is_expr_stmt(type)) {
         gen_expr_stmt_code(ast, env);
     } else if (is_selection_stmt(type)) {
         gen_selection_stmt_code(ast, env);
