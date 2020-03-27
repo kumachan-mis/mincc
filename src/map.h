@@ -1,5 +1,5 @@
-#ifndef _MINCC_MAP_H_
-#define _MINCC_MAP_H_
+#ifndef _MAP_H_
+#define _MAP_H_
 
 
 #include <stddef.h>
@@ -32,4 +32,4 @@ map_value_t map_find(Map* map, map_key_t key);
 void map_delete(Map* map);
 
 
-#endif  // _MINCC_MAP_H_
+#endif  // _MAP_H_

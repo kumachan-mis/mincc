@@ -11,7 +11,7 @@ test_mincc() {
     echo ${input} | ${MINCC} ${input} > ${ASSEMBLY}
 
     if [ $? -ne 0 ]; then
-        echo "\e[0;31m[FAIL]\e[m ${input} => ${expected} expected, but failed to compile"
+        echo "\e[0;31m[FAIL]\e[m failed to compile"
         exit 1
     fi
 

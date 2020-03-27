@@ -6,7 +6,7 @@ SRCS      := $(shell find $(SRC_DIR) -name *.c)
 OBJS      := $(SRCS:$(SRC_DIR)%.c=$(BUILD_DIR)%.o)
 
 CC        := gcc-9
-CFLAGS    := -std=c11 -g -static
+CFLAGS    := -std=c99 -g -static
 
 MAKEDIR_P     := mkdir -p
 
@@ -18,12 +18,12 @@ $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
 	$(MAKEDIR_P) $(BUILD_DIR) && $(CC) $(CFLAGS) -c $< -o $@
 
 
-$(BUILD_DIR)/test_mincc_vector.out:\
-	$(BUILD_DIR)/test_mincc_vector.o $(BUILD_DIR)/mincc_vector.o $(BUILD_DIR)/mincc_memory.o
+$(BUILD_DIR)/test_vector.out:\
+	$(BUILD_DIR)/test_vector.o $(BUILD_DIR)/vector.o $(BUILD_DIR)/memory.o
 	$(CC) $^ -o $@
 
-$(BUILD_DIR)/test_mincc_map.out:\
-	$(BUILD_DIR)/test_mincc_map.o $(BUILD_DIR)/mincc_map.o $(BUILD_DIR)/mincc_memory.o
+$(BUILD_DIR)/test_map.out:\
+	$(BUILD_DIR)/test_map.o $(BUILD_DIR)/map.o $(BUILD_DIR)/memory.o
 	$(CC) $^ -o $@
 
 $(BUILD_DIR)/%.o: $(TEST_DIR)/%.c
