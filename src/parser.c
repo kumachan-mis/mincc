@@ -358,16 +358,14 @@ Ast* parse_expr(TokenList* tokenlist) {
 
 // statement-parser
 Ast* parse_expr_stmt(TokenList* tokenlist) {
-    Ast* ast = NULL;
+    Ast* ast = ast_new(AST_EXPR_STMT, 0);
 
     Token* token = tokenlist_top(tokenlist);
     if (token->type == TOKEN_SEMICOLON) {
-        ast = ast_new(AST_NULL_STMT, 0);
+        ast_append_child(ast, ast_new(AST_NULL, 0));
         tokenlist_pop(tokenlist);
     } else {
-        ast = ast_new(AST_EXPR_STMT, 0);
         ast_append_child(ast, parse_expr(tokenlist));
-    
         token = tokenlist_top(tokenlist);
         tokenlist_pop(tokenlist);
         assert_syntax(token->type == TOKEN_SEMICOLON);
@@ -537,7 +535,7 @@ void ast_delete(Ast* ast) {
     free(ast);
 }
 
-// asttype-classifier
+// expression-ast-classifier
 int is_primary_expr(AstType type) {
     return type == AST_INT || type == AST_VAR;
 }
@@ -584,8 +582,13 @@ int is_assignment_expr(AstType type) {
     return type == AST_ASSIGN;
 }
 
+int is_null_expr(AstType type) {
+    return type == AST_NULL;
+}
+
+// statement-ast-classifier
 int is_expr_stmt(AstType type) {
-    return type == AST_EXPR_STMT || type == AST_NULL_STMT;
+    return type == AST_EXPR_STMT;
 }
 
 int is_selection_stmt(AstType type) {

@@ -22,6 +22,7 @@ void gen_bitwise_expr_code(Ast* ast, CodeEnvironment* env);
 void gen_logical_expr_code(Ast* ast, CodeEnvironment* env);
 void gen_assignment_expr_code(Ast* ast, CodeEnvironment* env);
 void gen_expr_code(Ast* ast, CodeEnvironment* env);
+void gen_null_expr_code(Ast* ast, CodeEnvironment* env);
 
 // statement-code-generator
 void gen_expr_stmt_code(Ast* ast, CodeEnvironment* env);
@@ -314,6 +315,16 @@ void gen_assignment_expr_code(Ast* ast, CodeEnvironment* env) {
     append_code(env->codes, "\tpush %%rax\n");
 }
 
+void gen_null_expr_code(Ast* ast, CodeEnvironment* env) {
+    switch(ast->type) {
+        case AST_NULL:
+            append_code(env->codes, "\tnop\n");
+            break;
+        default:
+            assert_code_gen(0);
+    }
+}
+
 void gen_expr_code(Ast* ast, CodeEnvironment* env) {
      AstType type = ast->type;
     
@@ -341,6 +352,8 @@ void gen_expr_code(Ast* ast, CodeEnvironment* env) {
         gen_logical_expr_code(ast, env);
     } else if (is_assignment_expr(type)) {
         gen_assignment_expr_code(ast, env);
+    } else if (is_null_expr(type)) {
+        gen_null_expr_code(ast, env);
     } else {
         assert_code_gen(0);
     }
@@ -352,9 +365,6 @@ void gen_expr_stmt_code(Ast* ast, CodeEnvironment* env) {
         case AST_EXPR_STMT:
             gen_expr_code(ast_nth_child(ast, 0), env);
             append_code(env->codes, "\tadd $8, %%rsp\n");
-            break;
-        case AST_NULL_STMT:
-            append_code(env->codes, "\tnop\n");
             break;
         default:
             assert_code_gen(0);
