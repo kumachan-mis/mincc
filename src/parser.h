@@ -68,6 +68,7 @@ typedef enum {
 
     // iteration-statement
     AST_WHILE_STMT,
+    AST_FOR_STMT,
 
     // jump-statement
     AST_RETURN_STMT,

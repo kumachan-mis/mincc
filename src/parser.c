@@ -37,6 +37,7 @@ void ast_append_child(Ast* ast, Ast* child);
 void ast_delete(Ast* ast);
 
 // assertion
+void assert_and_pop_token(TokenList* tokenlist, TokenType expected_type);
 void assert_syntax(int condition);
 
 
@@ -69,9 +70,7 @@ Ast* parse_primary_expr(TokenList* tokenlist) {
             break;
         case TOKEN_LPAREN:
             ast = parse_expr(tokenlist);
-            token = tokenlist_top(tokenlist);
-            tokenlist_pop(tokenlist);
-            assert_syntax(token->type == TOKEN_RPAREN);
+            assert_and_pop_token(tokenlist, TOKEN_RPAREN);
             break;
         default:
             assert_syntax(0);
@@ -88,9 +87,7 @@ Ast* parse_postfix_expr(TokenList* tokenlist) {
             case TOKEN_LPAREN:
                 tokenlist_pop(tokenlist);
                 ast = ast_new(AST_CALL, 2, ast, parse_arg_expr_list(tokenlist));
-                token = tokenlist_top(tokenlist);
-                tokenlist_pop(tokenlist);
-                assert_syntax(token->type == TOKEN_RPAREN);
+                assert_and_pop_token(tokenlist, TOKEN_RPAREN);
                 break;
             default:
                 return ast;
@@ -107,9 +104,7 @@ Ast* parse_arg_expr_list(TokenList* tokenlist) {
     while (1) {
         token = tokenlist_top(tokenlist);
         if (token->type == TOKEN_RPAREN) return ast;
-    
-        tokenlist_pop(tokenlist);
-        assert_syntax(token->type == TOKEN_COMMA);
+        assert_and_pop_token(tokenlist, TOKEN_COMMA);
         ast_append_child(ast, parse_assignment_expr(tokenlist));
     }
 }
@@ -361,15 +356,13 @@ Ast* parse_expr_stmt(TokenList* tokenlist) {
     Ast* ast = ast_new(AST_EXPR_STMT, 0);
 
     Token* token = tokenlist_top(tokenlist);
-    if (token->type == TOKEN_SEMICOLON) {
-        ast_append_child(ast, ast_new(AST_NULL, 0));
-        tokenlist_pop(tokenlist);
-    } else {
-        ast_append_child(ast, parse_expr(tokenlist));
-        token = tokenlist_top(tokenlist);
-        tokenlist_pop(tokenlist);
-        assert_syntax(token->type == TOKEN_SEMICOLON);
-    }
+    ast_append_child(
+        ast,
+        token->type == TOKEN_SEMICOLON
+        ? ast_new(AST_NULL, 0)
+        : parse_expr(tokenlist)
+    );
+    assert_and_pop_token(tokenlist, TOKEN_SEMICOLON);
     return ast;
 }
 
@@ -381,17 +374,9 @@ Ast* parse_selection_stmt(TokenList* tokenlist) {
     switch (token->type) {
         case TOKEN_IF:
             ast = ast_new(AST_IF_STMT, 0);
-    
-            token = tokenlist_top(tokenlist);
-            tokenlist_pop(tokenlist);
-            assert_syntax(token->type == TOKEN_LPAREN);
-
+            assert_and_pop_token(tokenlist, TOKEN_LPAREN);
             ast_append_child(ast, parse_expr(tokenlist));
-
-            token = tokenlist_top(tokenlist);
-            tokenlist_pop(tokenlist);
-            assert_syntax(token->type == TOKEN_RPAREN);
-
+            assert_and_pop_token(tokenlist, TOKEN_RPAREN);
             ast_append_child(ast, parse_stmt(tokenlist));
 
             token = tokenlist_top(tokenlist);
@@ -414,17 +399,38 @@ Ast* parse_iteration_stmt(TokenList* tokenlist) {
     switch (token->type) {
         case TOKEN_WHILE:
             ast = ast_new(AST_WHILE_STMT, 0);
-
-            token = tokenlist_top(tokenlist);
-            tokenlist_pop(tokenlist);
-            assert_syntax(token->type == TOKEN_LPAREN);
-
+            assert_and_pop_token(tokenlist, TOKEN_LPAREN);
             ast_append_child(ast, parse_expr(tokenlist));
-
+            assert_and_pop_token(tokenlist, TOKEN_RPAREN);
+            ast_append_child(ast, parse_stmt(tokenlist));
+            break;
+        case TOKEN_FOR:
+            ast = ast_new(AST_FOR_STMT, 0);
+            assert_and_pop_token(tokenlist, TOKEN_LPAREN);
             token = tokenlist_top(tokenlist);
-            tokenlist_pop(tokenlist);
-            assert_syntax(token->type == TOKEN_RPAREN);
-
+            ast_append_child(
+                ast,
+                token->type == TOKEN_SEMICOLON
+                ? ast_new(AST_NULL, 0)
+                : parse_expr(tokenlist)
+            );
+            assert_and_pop_token(tokenlist, TOKEN_SEMICOLON);
+            token = tokenlist_top(tokenlist);
+            ast_append_child(
+                ast,
+                token->type == TOKEN_SEMICOLON
+                ? ast_new(AST_NULL, 0)
+                : parse_expr(tokenlist)
+            );
+            assert_and_pop_token(tokenlist, TOKEN_SEMICOLON);
+            token = tokenlist_top(tokenlist);
+            ast_append_child(
+                ast,
+                token->type == TOKEN_RPAREN
+                ? ast_new(AST_NULL, 0)
+                : parse_expr(tokenlist)
+            );
+            assert_and_pop_token(tokenlist, TOKEN_RPAREN);
             ast_append_child(ast, parse_stmt(tokenlist));
             break;
         default:
@@ -442,10 +448,7 @@ Ast* parse_jump_stmt(TokenList* tokenlist) {
         case TOKEN_RETURN:
             ast = ast_new(AST_RETURN_STMT, 0);
             ast_append_child(ast, parse_expr(tokenlist));
-    
-            token = tokenlist_top(tokenlist);
-            tokenlist_pop(tokenlist);
-            assert_syntax(token->type == TOKEN_SEMICOLON);
+            assert_and_pop_token(tokenlist, TOKEN_SEMICOLON);
             break;
         default:
             assert_syntax(0);
@@ -457,7 +460,10 @@ Ast* parse_stmt(TokenList* tokenlist) {
     Token* token = tokenlist_top(tokenlist);
     if (token->type == TOKEN_IF) {
         return parse_selection_stmt(tokenlist);
-    } else if (token->type == TOKEN_WHILE) {
+    } else if (
+        token->type == TOKEN_WHILE ||
+        token->type == TOKEN_FOR
+    ) {
         return parse_iteration_stmt(tokenlist);
     } else if (token->type == TOKEN_RETURN) {
         return parse_jump_stmt(tokenlist);
@@ -596,11 +602,18 @@ int is_selection_stmt(AstType type) {
 }
 
 int is_iteration_stmt(AstType type) {
-    return type == AST_WHILE_STMT;
+    return type == AST_WHILE_STMT || type == AST_FOR_STMT;
 }
 
 int is_jump_stmt(AstType type) {
     return type == AST_RETURN_STMT;
+}
+
+// assertion
+void assert_and_pop_token(TokenList* tokenlist, TokenType expected_type) {
+    Token* token = tokenlist_top(tokenlist);
+    tokenlist_pop(tokenlist);
+    assert_syntax(token->type == expected_type);
 }
 
 void assert_syntax(int condition) {
