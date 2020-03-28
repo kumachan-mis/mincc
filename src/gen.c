@@ -36,10 +36,11 @@ void gen_jump_stmt_code(Ast* ast, CodeEnvironment* env);
 void gen_stmt_code(Ast* ast, CodeEnvironment* env);
 
 // external-definition-generator
-Ast* gen_param_list_code(Ast* ast, CodeEnvironment* env);
+void gen_function_definition_code(Ast* ast, CodeEnvironment* env);
+void gen_param_list_code(Ast* ast, CodeEnvironment* env);
 
 // code-environment
-CodeEnvironment* code_environment_new(char* funcname);
+CodeEnvironment* code_environment_new();
 void append_code(Vector* codes, char* format, ...);
 char* create_new_label(CodeEnvironment* env);
 int get_stack_offset(CodeEnvironment* env, char* value_ident);
@@ -56,35 +57,11 @@ void print_code(AstList* astlist) {
         Ast* ast = astlist_top(astlist);
         if (ast == NULL) break;
 
-        Ast* function_ident = ast_nth_child(ast, 0);
-        char* funcname = function_ident->value_ident;
-        CodeEnvironment* env = code_environment_new(funcname);
-    
-        gen_param_list_code(ast_nth_child(ast, 1), env);
-        gen_stmt_code(ast_nth_child(ast, 2), env);
-
-        Vector* header_codes = vector_new();
-        append_code(header_codes, "\t.global _%s\n", funcname);
-        append_code(header_codes, "_%s:\n", funcname);
-        append_code(header_codes, "\tpush %%rbp\n");
-        append_code(header_codes, "\tmov %%rsp, %%rbp\n");
-        append_code(header_codes, "\tsub $%d, %%rsp\n", (env->stack_offset + 15) / 16 * 16);
-
-        Vector* footer_codes = vector_new();
-        append_code(footer_codes, ".L_%s_return:\n", funcname);
-        append_code(footer_codes, "\tmov %%rbp, %%rsp\n");
-        append_code(footer_codes, "\tpop %%rbp\n");
-        append_code(footer_codes, "\tret\n");
-        append_code(footer_codes, "\n");
-
-        put_code(stdout, header_codes);
+        CodeEnvironment* env = code_environment_new();
+        gen_function_definition_code(ast, env);
         put_code(stdout, env->codes);
-        put_code(stdout, footer_codes);
 
-        vector_delete(footer_codes);
-        vector_delete(header_codes);
         code_environment_delete(env);
-
         astlist_pop(astlist);
     }
 }
@@ -524,7 +501,32 @@ void gen_stmt_code(Ast* ast, CodeEnvironment* env) {
 }
 
 // external-definition-generator
-Ast* gen_param_list_code(Ast* ast, CodeEnvironment* env) {
+void gen_function_definition_code(Ast* ast, CodeEnvironment* env) {
+    Ast* function_ident = ast_nth_child(ast, 0);
+    free(env->funcname);
+    env->funcname = str_new(function_ident->value_ident);
+
+    gen_param_list_code(ast_nth_child(ast, 1), env);
+    gen_stmt_code(ast_nth_child(ast, 2), env);
+
+    Vector* codes = vector_new();
+    append_code(codes, "\t.global _%s\n", env->funcname);
+    append_code(codes, "_%s:\n", env->funcname);
+    append_code(codes, "\tpush %%rbp\n");
+    append_code(codes, "\tmov %%rsp, %%rbp\n");
+    append_code(codes, "\tsub $%d, %%rsp\n", (env->stack_offset + 15) / 16 * 16);
+    vector_join(codes, env->codes);
+    append_code(codes, ".L_%s_return:\n", env->funcname);
+    append_code(codes, "\tmov %%rbp, %%rsp\n");
+    append_code(codes, "\tpop %%rbp\n");
+    append_code(codes, "\tret\n");
+    append_code(codes, "\n");
+
+    vector_delete(env->codes);
+    env->codes = codes;
+}
+
+void gen_param_list_code(Ast* ast, CodeEnvironment* env) {
     size_t num_args = ast->children->size;
     assert_code_gen(num_args <= 6);
 
@@ -537,9 +539,9 @@ Ast* gen_param_list_code(Ast* ast, CodeEnvironment* env) {
 }
 
 // code-environment
-CodeEnvironment* code_environment_new(char* funcname) {
+CodeEnvironment* code_environment_new() {
     CodeEnvironment* env = (CodeEnvironment*)safe_malloc(sizeof(CodeEnvironment));
-    env->funcname = str_new(funcname);
+    env->funcname = NULL;
     env->num_labels = 0;
     env->stack_offset = 0;
     env->var_map = map_new();
