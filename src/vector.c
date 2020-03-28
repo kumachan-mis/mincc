@@ -37,6 +37,18 @@ void vector_push_back(Vector* vector, vector_item_t item) {
     }
 }
 
+void vector_join(Vector* dist, Vector* src) {
+    vector_reserve(dist, dist->size + src->size);
+    size_t i = 0, size = src->size;
+    for (i = 0; i < size; i++) {
+        vector_push_back(dist, vector_at(src, i));
+    }
+    free(src->data);
+    src->data = NULL;
+    src->size = 0;
+    src->capacity = 0;
+}
+
 vector_item_t vector_at(Vector* vector, size_t index) {
     if (index < 0 || index >= vector->size) return NULL;
     return vector->data[index];

@@ -31,6 +31,11 @@ Ast* parse_iteration_stmt(TokenList* tokenlist);
 Ast* parse_jump_stmt(TokenList* tokenlist);
 Ast* parse_stmt(TokenList* tokenlist);
 
+// external-definition-parser
+Ast* parse_function_definition(TokenList* tokenlist);
+Ast* parse_param_list(TokenList* tokenlist);
+Ast* parse_param_declaration(TokenList* tokenlist);
+
 // ast
 AstList* astlist_new();
 Ast* ast_new(AstType type, size_t num_children, ...);
@@ -48,7 +53,7 @@ AstList* parse(TokenList* tokenlist) {
     while (1) {
         Token* token = tokenlist_top(tokenlist);
         if (token->type == TOKEN_EOF) break;
-        Ast* ast = parse_stmt(tokenlist);
+        Ast* ast = parse_function_definition(tokenlist);
         vector_push_back(inner_vector, ast);
     }
     return astlist;
@@ -66,7 +71,7 @@ Ast* parse_primary_expr(TokenList* tokenlist) {
             ast->value_int = token->value_int;
             break;
         case TOKEN_IDENT:
-            ast = ast_new(AST_VAR, 0);
+            ast = ast_new(AST_IDENT, 0);
             ast->value_ident = str_new(token->value_ident);
             break;
         case TOKEN_LPAREN:
@@ -87,7 +92,7 @@ Ast* parse_postfix_expr(TokenList* tokenlist) {
         switch (token->type) {
             case TOKEN_LPAREN:
                 tokenlist_pop(tokenlist);
-                ast = ast_new(AST_CALL, 2, ast, parse_arg_expr_list(tokenlist));
+                ast = ast_new(AST_FUNC_CALL, 2, ast, parse_arg_expr_list(tokenlist));
                 assert_and_pop_token(tokenlist, TOKEN_RPAREN);
                 break;
             default:
@@ -501,6 +506,59 @@ Ast* parse_stmt(TokenList* tokenlist) {
     }
 }
 
+// external-definition-parser
+Ast* parse_function_definition(TokenList* tokenlist) {
+    Ast* ast = ast_new(AST_FUNC_DEF, 0);
+    Ast* child = NULL;
+
+    Token* token = tokenlist_top(tokenlist);
+    tokenlist_pop(tokenlist);
+    switch (token->type) {
+        case TOKEN_IDENT:
+            child = ast_new(AST_IDENT, 0);
+            child->value_ident = str_new(token->value_ident);
+            ast_append_child(ast, child);
+            assert_and_pop_token(tokenlist, TOKEN_LPAREN);
+            ast_append_child(ast, parse_param_list(tokenlist));
+            assert_and_pop_token(tokenlist, TOKEN_RPAREN);
+            ast_append_child(ast, parse_compound_stmt(tokenlist));
+            break;
+        default:
+            assert_syntax(0);
+    }
+    return ast;
+}
+
+Ast* parse_param_list(TokenList* tokenlist) {
+    Ast* ast = ast_new(AST_PARAM_LIST, 0);
+    Token* token = tokenlist_top(tokenlist);
+    if (token->type == TOKEN_RPAREN) return ast;
+    
+    ast_append_child(ast, parse_param_declaration(tokenlist));
+    while (1) {
+        token = tokenlist_top(tokenlist);
+        if (token->type == TOKEN_RPAREN) return ast;
+        assert_and_pop_token(tokenlist, TOKEN_COMMA);
+        ast_append_child(ast, parse_param_declaration(tokenlist));
+    }
+}
+
+Ast* parse_param_declaration(TokenList* tokenlist) {
+    Ast* ast = NULL;
+    Token* token = tokenlist_top(tokenlist);
+    tokenlist_pop(tokenlist);
+
+    switch (token->type) {
+        case TOKEN_IDENT:
+            ast = ast_new(AST_IDENT, 0);
+            ast->value_ident = str_new(token->value_ident);
+            break;
+        default:
+            assert_syntax(0);
+    }
+    return ast;
+}
+
 // ast
 AstList* astlist_new() {
     AstList* astlist = (AstList*)safe_malloc(sizeof(AstList));
@@ -564,7 +622,7 @@ void ast_delete(Ast* ast) {
     }
     free(children);
 
-    if (ast->type == AST_VAR) {
+    if (ast->type == AST_IDENT) {
         free(ast->value_ident);
     }
     free(ast);
@@ -572,11 +630,11 @@ void ast_delete(Ast* ast) {
 
 // expression-ast-classifier
 int is_primary_expr(AstType type) {
-    return type == AST_INT || type == AST_VAR;
+    return type == AST_INT || type == AST_IDENT;
 }
 
 int is_postfix_expr(AstType type) {
-    return type == AST_CALL;
+    return type == AST_FUNC_CALL;
 }
 
 int is_unary_expr(AstType type) {
