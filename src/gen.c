@@ -8,6 +8,9 @@
 #include "memory.h"
 
 
+static char* arg_register[] = { "rdi", "rsi", "rdx", "rcx", "r8", "r9" };
+
+
 void put_code(FILE* file_ptr, Vector* codes);
 
 // expression-code-generator
@@ -32,9 +35,13 @@ void gen_iteration_stmt_code(Ast* ast, CodeEnvironment* env);
 void gen_jump_stmt_code(Ast* ast, CodeEnvironment* env);
 void gen_stmt_code(Ast* ast, CodeEnvironment* env);
 
+// external-definition-generator
+Ast* gen_param_list_code(Ast* ast, CodeEnvironment* env);
+
 // code-environment
-CodeEnvironment* code_environment_new();
+CodeEnvironment* code_environment_new(char* funcname);
 void append_code(Vector* codes, char* format, ...);
+char* create_new_label(CodeEnvironment* env);
 int get_stack_offset(CodeEnvironment* env, char* value_ident);
 int create_stack_offset(CodeEnvironment* env, char* value_ident);
 int get_or_create_stack_offset(CodeEnvironment* env, char* value_ident);
@@ -45,37 +52,41 @@ void assert_code_gen(int condition);
 
 
 void print_code(AstList* astlist) {
-    if (astlist_top(astlist) == NULL) return;
-
-    CodeEnvironment* env = code_environment_new();
-    size_t i = 0, size = astlist->inner_vector->size;
     while (1) {
         Ast* ast = astlist_top(astlist);
         if (ast == NULL) break;
-        gen_stmt_code(ast, env);
+
+        Ast* function_ident = ast_nth_child(ast, 0);
+        char* funcname = function_ident->value_ident;
+        CodeEnvironment* env = code_environment_new(funcname);
+    
+        gen_param_list_code(ast_nth_child(ast, 1), env);
+        gen_stmt_code(ast_nth_child(ast, 2), env);
+
+        Vector* header_codes = vector_new();
+        append_code(header_codes, "\t.global _%s\n", funcname);
+        append_code(header_codes, "_%s:\n", funcname);
+        append_code(header_codes, "\tpush %%rbp\n");
+        append_code(header_codes, "\tmov %%rsp, %%rbp\n");
+        append_code(header_codes, "\tsub $%d, %%rsp\n", (env->stack_offset + 15) / 16 * 16);
+
+        Vector* footer_codes = vector_new();
+        append_code(footer_codes, ".L_%s_return:\n", funcname);
+        append_code(footer_codes, "\tmov %%rbp, %%rsp\n");
+        append_code(footer_codes, "\tpop %%rbp\n");
+        append_code(footer_codes, "\tret\n");
+        append_code(footer_codes, "\n");
+
+        put_code(stdout, header_codes);
+        put_code(stdout, env->codes);
+        put_code(stdout, footer_codes);
+
+        vector_delete(footer_codes);
+        vector_delete(header_codes);
+        code_environment_delete(env);
+
         astlist_pop(astlist);
     }
-
-    Vector* header_codes = vector_new();
-    append_code(header_codes, "\t.global _main\n");
-    append_code(header_codes, "_main:\n");
-    append_code(header_codes, "\tpush %%rbp\n");
-    append_code(header_codes, "\tmov %%rsp, %%rbp\n");
-    append_code(header_codes, "\tsub $%d, %%rsp\n", (env->stack_offset + 15) / 16 * 16);
-
-    Vector* footer_codes = vector_new();
-    append_code(footer_codes, ".L_main_return:\n");
-    append_code(footer_codes, "\tmov %%rbp, %%rsp\n");
-    append_code(footer_codes, "\tpop %%rbp\n");
-    append_code(footer_codes, "\tret\n");
-
-    put_code(stdout, header_codes);
-    put_code(stdout, env->codes);
-    put_code(stdout, footer_codes);
-
-    vector_delete(footer_codes);
-    vector_delete(header_codes);
-    code_environment_delete(env);
 }
 
 void put_code(FILE* file_ptr, Vector* codes) {
@@ -92,7 +103,7 @@ void gen_primary_expr_code(Ast* ast, CodeEnvironment* env) {
         case AST_INT:
             append_code(env->codes, "\tpush $%d\n", ast->value_int);
             break;
-        case AST_VAR: {
+        case AST_IDENT: {
             int stack_offset = get_stack_offset(env, ast->value_ident);
             append_code(env->codes, "\tmov -%d(%%rbp), %%eax\n", stack_offset);
             append_code(env->codes, "\tpush %%rax\n");
@@ -108,8 +119,8 @@ void gen_postfix_expr_code(Ast* ast, CodeEnvironment* env) {
     Ast* rhs = ast_nth_child(ast, 1);
 
     switch (ast->type) {
-        case AST_CALL:
-            assert_code_gen(lhs->type == AST_VAR);
+        case AST_FUNC_CALL:
+            assert_code_gen(lhs->type == AST_IDENT);
             gen_arg_expr_list_code(rhs, env);
             append_code(env->codes, "\tcall _%s\n", lhs->value_ident);
             append_code(env->codes, "\tpush %%rax\n");
@@ -123,11 +134,12 @@ void gen_arg_expr_list_code(Ast* ast, CodeEnvironment* env) {
     size_t num_args = ast->children->size;
     assert_code_gen(num_args <= 6);
 
-    char* arg_register[] = { "rdi", "rsi", "rdx", "rcx", "r8", "r9" };
     size_t i = 0;
     for (i = 0; i < num_args; i++) {
         gen_expr_code(ast_nth_child(ast, i), env);
-        append_code(env->codes, "\tpop %%%s\n", arg_register[i]);
+    }
+    for (i = 0; i < num_args; i++) {
+        append_code(env->codes, "\tpop %%%s\n", arg_register[num_args - i - 1]);
     }
 }
 
@@ -269,7 +281,7 @@ void gen_bitwise_expr_code(Ast* ast, CodeEnvironment* env) {
 }
 
 void gen_logical_expr_code(Ast* ast, CodeEnvironment* env) {
-    int exit_labno = env->num_labels; env->num_labels++;
+    char* exit_label = create_new_label(env);
 
     gen_expr_code(ast_nth_child(ast, 0), env);
     append_code(env->codes, "\tpop %%rax\n");
@@ -277,10 +289,10 @@ void gen_logical_expr_code(Ast* ast, CodeEnvironment* env) {
 
     switch (ast->type) {
         case AST_LOR:
-            append_code(env->codes, "\tjne .L%d\n", exit_labno);
+            append_code(env->codes, "\tjne .L%s\n", exit_label);
             break;
         case AST_LAND:
-            append_code(env->codes, "\tje .L%d\n", exit_labno);
+            append_code(env->codes, "\tje .L%s\n", exit_label);
             break;
         default:
             assert_code_gen(0);
@@ -290,10 +302,12 @@ void gen_logical_expr_code(Ast* ast, CodeEnvironment* env) {
     append_code(env->codes, "\tpop %%rax\n");
     append_code(env->codes, "\tcmp $0, %%rax\n");
 
-    append_code(env->codes, ".L%d:\n", exit_labno);
+    append_code(env->codes, ".L%s:\n", exit_label);
     append_code(env->codes, "\tsetne %%al\n");
     append_code(env->codes, "\tmovzb %%al, %%eax\n");
     append_code(env->codes, "\tpush %%rax\n");
+
+    free(exit_label);
 }
 
 void gen_assignment_expr_code(Ast* ast, CodeEnvironment* env) {
@@ -302,7 +316,7 @@ void gen_assignment_expr_code(Ast* ast, CodeEnvironment* env) {
 
     gen_expr_code(rhs, env);
     append_code(env->codes, "\tpop %%rax\n");
-    assert_code_gen(lhs->type == AST_VAR);
+    assert_code_gen(lhs->type == AST_IDENT);
 
     switch (ast->type) {
         case AST_ASSIGN:
@@ -399,19 +413,22 @@ void gen_selection_stmt_code(Ast* ast, CodeEnvironment* env) {
             append_code(env->codes, "\tpop %%rax\n");
             append_code(env->codes, "\tcmp $0, %%rax\n");
             if (ast->children->size == 2) {
-                int exit_labno = env->num_labels; env->num_labels++;
-                append_code(env->codes, "\tje .L%d\n", exit_labno);
+                char* exit_label = create_new_label(env);
+                append_code(env->codes, "\tje .L%s\n", exit_label);
                 gen_stmt_code(ast_nth_child(ast, 1), env);
-                append_code(env->codes, ".L%d:\n",   exit_labno);
+                append_code(env->codes, ".L%s:\n",   exit_label);
+                free(exit_label);
             } else {
-                int else_labno = env->num_labels; env->num_labels++;
-                int exit_labno = env->num_labels; env->num_labels++;
-                append_code(env->codes, "\tje .L%d\n", else_labno);
+                char* else_label = create_new_label(env);
+                char* exit_label = create_new_label(env);
+                append_code(env->codes, "\tje .L%s\n", else_label);
                 gen_stmt_code(ast_nth_child(ast, 1), env);
-                append_code(env->codes, "\tjmp .L%d\n", exit_labno);
-                append_code(env->codes, ".L%d:\n",   else_labno);
+                append_code(env->codes, "\tjmp .L%s\n", exit_label);
+                append_code(env->codes, ".L%s:\n",   else_label);
                 gen_stmt_code(ast_nth_child(ast, 2), env);
-                append_code(env->codes, ".L%d:\n",   exit_labno);
+                append_code(env->codes, ".L%s:\n",   exit_label);
+                free(else_label);
+                free(exit_label);
             }
             break;
         default:
@@ -422,27 +439,27 @@ void gen_selection_stmt_code(Ast* ast, CodeEnvironment* env) {
 
 void gen_iteration_stmt_code(Ast* ast, CodeEnvironment* env) {
     Ast* child = NULL;
-    int entry_labno = env->num_labels; env->num_labels++;
-    int exit_labno = env->num_labels; env->num_labels++;
+    char* entry_label = create_new_label(env);
+    char* exit_label = create_new_label(env);
 
     switch (ast->type) {
         case AST_WHILE_STMT: 
-            append_code(env->codes, ".L%d:\n",   entry_labno);
+            append_code(env->codes, ".L%s:\n",   entry_label);
             gen_expr_code(ast_nth_child(ast, 0), env);
             append_code(env->codes, "\tpop %%rax\n");
             append_code(env->codes, "\tcmp $0, %%rax\n");
-            append_code(env->codes, "\tje .L%d\n", exit_labno);
+            append_code(env->codes, "\tje .L%s\n", exit_label);
             gen_stmt_code(ast_nth_child(ast, 1), env);
-            append_code(env->codes, "\tjmp .L%d\n", entry_labno);
-            append_code(env->codes, ".L%d:\n",   exit_labno);
+            append_code(env->codes, "\tjmp .L%s\n", entry_label);
+            append_code(env->codes, ".L%s:\n",   exit_label);
             break;
         case AST_DOWHILE_STMT:
-            append_code(env->codes, ".L%d:\n",   entry_labno);
+            append_code(env->codes, ".L%s:\n",   entry_label);
             gen_stmt_code(ast_nth_child(ast, 0), env);
             gen_expr_code(ast_nth_child(ast, 1), env);
             append_code(env->codes, "\tpop %%rax\n");
             append_code(env->codes, "\tcmp $0, %%rax\n");
-            append_code(env->codes, "\tjne .L%d\n", entry_labno);
+            append_code(env->codes, "\tjne .L%s\n", entry_label);
             break;
         case AST_FOR_STMT:
             child = ast_nth_child(ast, 0);
@@ -450,13 +467,13 @@ void gen_iteration_stmt_code(Ast* ast, CodeEnvironment* env) {
             if (!is_null_expr(child->type)) {
                 append_code(env->codes, "\tadd $8, %%rsp\n");
             }
-            append_code(env->codes, ".L%d:\n",   entry_labno);
+            append_code(env->codes, ".L%s:\n",   entry_label);
             child = ast_nth_child(ast, 1);
             gen_expr_code(child, env);
             if (!is_null_expr(child->type)) {
                 append_code(env->codes, "\tpop %%rax\n");
                 append_code(env->codes, "\tcmp $0, %%rax\n");
-                append_code(env->codes, "\tje .L%d\n", exit_labno);
+                append_code(env->codes, "\tje .L%s\n", exit_label);
             }
             gen_stmt_code(ast_nth_child(ast, 3), env);
             child = ast_nth_child(ast, 2);
@@ -464,13 +481,15 @@ void gen_iteration_stmt_code(Ast* ast, CodeEnvironment* env) {
             if (!is_null_expr(child->type)) {
                 append_code(env->codes, "\tadd $8, %%rsp\n");
             }
-            append_code(env->codes, "\tjmp .L%d\n", entry_labno);
-            append_code(env->codes, ".L%d:\n",   exit_labno);
+            append_code(env->codes, "\tjmp .L%s\n", entry_label);
+            append_code(env->codes, ".L%s:\n",   exit_label);
             break;
         default:
             assert_code_gen(0);
             break;
     }
+    free(entry_label);
+    free(exit_label);
 }
 
 void gen_jump_stmt_code(Ast* ast, CodeEnvironment* env) {
@@ -478,7 +497,7 @@ void gen_jump_stmt_code(Ast* ast, CodeEnvironment* env) {
         case AST_RETURN_STMT:
             gen_expr_code(ast_nth_child(ast, 0), env);
             append_code(env->codes, "\tpop %%rax\n");
-            append_code(env->codes, "\tjmp .L_main_return\n");
+            append_code(env->codes, "\tjmp .L_%s_return\n", env->funcname);
             break;
         default:
             assert_code_gen(0);
@@ -504,9 +523,23 @@ void gen_stmt_code(Ast* ast, CodeEnvironment* env) {
     }
 }
 
+// external-definition-generator
+Ast* gen_param_list_code(Ast* ast, CodeEnvironment* env) {
+    size_t num_args = ast->children->size;
+    assert_code_gen(num_args <= 6);
+
+    size_t i = 0;
+    for (i = 0; i < num_args; i++) {
+        Ast* param_ident = ast_nth_child(ast, i);
+        int stack_offset = get_or_create_stack_offset(env, param_ident->value_ident);
+        append_code(env->codes, "\tmov %%%s, -%d(%%rbp)\n", arg_register[i], stack_offset);
+    }
+}
+
 // code-environment
-CodeEnvironment* code_environment_new() {
+CodeEnvironment* code_environment_new(char* funcname) {
     CodeEnvironment* env = (CodeEnvironment*)safe_malloc(sizeof(CodeEnvironment));
+    env->funcname = str_new(funcname);
     env->num_labels = 0;
     env->stack_offset = 0;
     env->var_map = map_new();
@@ -522,6 +555,17 @@ void append_code(Vector* codes, char* format, ...) {
     va_end(list);
     assert_code_gen(success);
     vector_push_back(codes, str_new(buffer));
+}
+
+char* create_new_label(CodeEnvironment* env) {
+    if (env->num_labels == 1 << 30) {
+        assert_code_gen(0);
+        return NULL;
+    }
+    char* label = safe_malloc(sizeof(char) * (strlen(env->funcname) + 12 + 1));
+    sprintf(label, "_%s_%d", env->funcname, env->num_labels);
+    env->num_labels++;
+    return label;
 }
 
 int get_stack_offset(CodeEnvironment* env, char* value_ident) {
@@ -544,6 +588,7 @@ int get_or_create_stack_offset(CodeEnvironment* env, char* value_ident) {
 }
 
 void code_environment_delete(CodeEnvironment* env) {
+    free(env->funcname);
     map_delete(env->var_map);
     vector_delete(env->codes);
     free(env);

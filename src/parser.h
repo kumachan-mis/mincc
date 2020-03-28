@@ -8,11 +8,11 @@
 
 typedef enum {
     // primary-expression
-    AST_VAR,
+    AST_IDENT,
     AST_INT,
 
     // postfix-expression
-    AST_CALL,
+    AST_FUNC_CALL,
     // argument-expression-list
     AST_ARG_LIST,
 
@@ -76,6 +76,11 @@ typedef enum {
 
     // jump-statement
     AST_RETURN_STMT,
+
+    // external-definition
+    AST_FUNC_DEF,
+    // parameter-list
+    AST_PARAM_LIST
 } AstType;
 
 
