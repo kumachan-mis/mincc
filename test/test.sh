@@ -123,36 +123,33 @@ test_mincc "int main() { put_int(!1); return 0; }"               "0\$"
 
 test_mincc "
 int main() {
-    int x;
-    x = 3;
+    int x = 3;
     put_int(x + 1);
     return 0;
 }"                            "4\$"
 test_mincc "
 int main() {
-    int tmp;
-    tmp =  2+110-94;
+    int tmp =  2+110-94;
     put_int(tmp*2);
     return 0;
 }"                           "36\$"
 test_mincc "
 int main() {
-    int a, b, c;
-    a = 5;b = 2;c = 6;
+    int a, b, c = 6;
+    a = 5;b = 2;
     put_int((a + c)*b*b);
     return 0;
 }"                           "44\$"
 test_mincc "
 int main() {
-    int a, b, c;
-    a = 5;b = 12; c=13;
+    int a = 5, b, c;
+    b = 12; c=13;
     put_int(a*a+b*b == c*c);
     return 0;
 }"                            "1\$"
 test_mincc "
 int main() {
-    int x, y;
-    x = 1;y = 3;
+    int x = 1, y = 3;
     x = x + y; y = x + y;
     put_int(x*y);
     return 0;
@@ -167,7 +164,7 @@ int main() {
 }"                            "2\$"
 test_mincc "
 int main() {
-    int x;
+    int x = 2;
     x = 1;
     put_int(x + 3);
     return 0;
@@ -185,46 +182,40 @@ int main() {
 }"                            "6\$"
 test_mincc "
 int main() {
-    int x;
-    x = five();
+    int x = five();;
     put_int(x+five());
     return 0;
 }"                           "10\$"
 test_mincc "
 int main() {
-    int x, y, z;
-    x = 6; y = -3; z = 4;
+    int x = 6, y = -3, z = 4;
     put_int(sum(x, y, z, x, -y, -z));
     return 0;
 }"                           "12\$"
 test_mincc "
 int main() {
-    int x, y;
-    x = 6; y = 2;
+    int x = 6, y = 2;
     put_int(square(x*y));
     return 0;
 }"                          "144\$"
 
 test_mincc "
 int main() {
-    int x, y;
-    x = 0; y = 3;
+    int x = 0, y = 3;
     if (x == 0) y = 2*y;
     put_int(y);
     return 0;
 }"                            "6\$"
 test_mincc "
 int main() {
-    int x, y;
-    x = 1; y = 3;
+    int x = 1, y = 3;
     if (x == 0) y = 2*y;
     put_int(y);
     return 0;
 }"                            "3\$"
 test_mincc "
 int main() {
-    int x, y;
-    x = 1; y = 3;
+    int x = 1, y = 3;
     if (x == 0) y = 2*y;
     else y = y / 2;
     put_int(y);
@@ -233,8 +224,7 @@ int main() {
 
 test_mincc "
 int main() {
-    int x;
-    x = 0;
+    int x = 0;
     if (x < 10)       put_int(1);
     else if (x < 100) put_int(2);
     else              put_int(3);
@@ -242,8 +232,7 @@ int main() {
 }"                            "1\$"
 test_mincc "
 int main() {
-    int x;
-    x = 9;
+    int x = 9;
     if (x < 10)       put_int(1);
     else if (x < 100) put_int(2);
     else              put_int(3);
@@ -251,8 +240,7 @@ int main() {
 }"                            "1\$"
 test_mincc "
 int main() {
-    int x;
-    x = 10;
+    int x = 10;
     if (x < 10)       put_int(1);
     else if (x < 100) put_int(2);
     else              put_int(3);
@@ -260,8 +248,7 @@ int main() {
 }"                            "2\$"
 test_mincc "
 int main() {
-    int x;
-    x = 99;
+    int x = 99;
     if (x < 10)       put_int(1);
     else if (x < 100) put_int(2);
     else              put_int(3);
@@ -269,8 +256,7 @@ int main() {
 }"                            "2\$"
 test_mincc "
 int main() {
-    int x;
-    x = 100;
+    int x = 100;
     if (x < 10)       put_int(1);
     else if (x < 100) put_int(2);
     else              put_int(3);
@@ -278,8 +264,7 @@ int main() {
 }"                            "3\$"
 test_mincc "
 int main() {
-    int x;
-    x = 379;
+    int x = 379;
     if (x < 10)       put_int(1);
     else if (x < 100) put_int(2);
     else              put_int(3);
@@ -288,32 +273,28 @@ int main() {
 
 test_mincc "
 int main() {
-    int x;
-    x = 3;
+    int x = 3;
     while (x < 50) x = put_int(x*x);
     put_int(x + 1);
     return 0;
 }"                    "9\$81\$82\$"
 test_mincc "
 int main() {
-    int x;
-    x = 2;
+    int x = 2;
     while (x <  1) x = put_int(x*x);
     put_int(x + 1);
     return 0;
 }"                            "3\$"
 test_mincc "
 int main() {
-    int x;
-    x = 3;
+    int x = 3;
     do x = put_int(x*x); while (x < 50);
     put_int(x + 1);
     return 0;
 }"                    "9\$81\$82\$"
 test_mincc "
 int main() {
-    int x;
-    x = 2;
+    int x = 2;
     do x = put_int(x*x); while (x <  1);
     put_int(x + 1);
     return 0;
@@ -321,8 +302,7 @@ int main() {
 
 test_mincc "
 int main() {
-    int sum, n; 
-    sum = 0; n = 5;
+    int sum = 0, n = 5;
     for (n=1; n<=10; n = n+1)
         sum = n + sum;
     put_int(sum);
@@ -330,8 +310,7 @@ int main() {
 }"                           "55\$"
 test_mincc "
 int main() {
-    int sum, n; 
-    sum = 0; n = 1;
+    int sum = 0, n = 1;
     for (; n <= 10; n = n+1)
         sum = n + sum;
     put_int(sum);
@@ -339,16 +318,15 @@ int main() {
 }"                           "55\$"
 test_mincc "
 int main() {
-     int n; 
-    n = 1;
+    int n = 1;
     for (;n <= 10;) n = n + 1;
     put_int(2*n);
     return 0;
 }"                           "22\$"
 test_mincc "
 int main() {
-    int ret, i, j;
-    ret = 0; i = 0; j = 2;
+    int ret = 0, i, j;
+    i = 0; j = 2;
     for (; i < 8; i = i+2)
         for (j=0; j < 8; j = j+1)
             ret = ret + 1;
@@ -357,8 +335,7 @@ int main() {
 }"                           "32\$"
 test_mincc "
 int main() {
-    int sum, n; 
-    sum = 0; n = 1;
+    int sum = 0, n = 1;
     while (n <= 8) {
         sum = sum + n*n;
         n = n + 1;
@@ -407,9 +384,7 @@ int main() {
 
 test_mincc "
 int main() {
-    int x, y;
-    x = 1;
-    y = 5;
+    int x = 1, y = 5;
     put_int(x);
     put_int(y);
     {

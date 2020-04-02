@@ -25,7 +25,7 @@ void symbol_table_enter_into_scope(SymbolTable* symbol_table, SymbolTable* paren
     }
 }
 
-void symbol_table_add_entry(SymbolTable* symbol_table, char* symbol_name, CType* ctype) {
+void symbol_table_insert(SymbolTable* symbol_table, char* symbol_name, CType* ctype) {
     if (map_find(symbol_table->inner_map, symbol_name) != NULL) {
         redefinition_error(symbol_name);
         return;

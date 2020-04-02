@@ -35,6 +35,7 @@ Ast* parse_stmt(TokenList* tokenlist, SymbolTable* symbol_table);
 // declaration-parser
 Ast* parse_declaration(TokenList* tokenlist, SymbolTable* symbol_table);
 CType* parse_type_specifier(TokenList* tokenlist, SymbolTable* symbol_table);
+Ast* parse_init_declarator(TokenList* tokenlist, SymbolTable* symbol_table, CType* basic_ctype);
 Ast* parse_declarator(TokenList* tokenlist, SymbolTable* symbol_table, CType* basic_ctype);
 Ast* parse_direct_declarator(TokenList* tokenlist, SymbolTable* symbol_table, CType* ctype);
 Ast* parse_param_list(TokenList* tokenlist, SymbolTable* symbol_table);
@@ -532,11 +533,9 @@ Ast* parse_declaration(TokenList* tokenlist, SymbolTable* symbol_table) {
     Ast* ast = ast_new(AST_DECL_LIST, 0);
     CType* basic_ctype = parse_type_specifier(tokenlist, symbol_table);
 
-    Ast* child = parse_declarator(tokenlist, symbol_table, ctype_copy(basic_ctype));
+    Ast* child = parse_init_declarator(tokenlist, symbol_table, ctype_copy(basic_ctype));
     Ast* ident = ast_nth_child(child, 0);
-    char* value_ident = str_new(ident->value_ident);
-    CType* ctype = ctype_copy(ident->ctype);
-    symbol_table_add_entry(symbol_table, value_ident, ctype);
+    symbol_table_insert(symbol_table, str_new(ident->value_ident), ctype_copy(ident->ctype));
     ast_append_child(ast, child);
 
     while (1) {
@@ -544,11 +543,9 @@ Ast* parse_declaration(TokenList* tokenlist, SymbolTable* symbol_table) {
         if (token->type == TOKEN_SEMICOLON) break;
         assert_and_pop_token(tokenlist, TOKEN_COMMA);
 
-        child = parse_declarator(tokenlist, symbol_table, ctype_copy(basic_ctype));
+        child = parse_init_declarator(tokenlist, symbol_table, ctype_copy(basic_ctype));
         ident = ast_nth_child(child, 0);
-        value_ident = str_new(ident->value_ident);
-        ctype = ctype_copy(ident->ctype);
-        symbol_table_add_entry(symbol_table, value_ident, ctype);
+        symbol_table_insert(symbol_table, str_new(ident->value_ident), ctype_copy(ident->ctype));
         ast_append_child(ast, child);
     }
 
@@ -569,6 +566,25 @@ CType* parse_type_specifier(TokenList* tokenlist, SymbolTable* symbol_table) {
             assert_syntax(0);
     }
     return ctype;
+}
+
+Ast* parse_init_declarator(TokenList* tokenlist, SymbolTable* symbol_table, CType* basic_ctype) {
+    Ast* ast = parse_declarator(tokenlist, symbol_table, basic_ctype);
+
+    Token* token = tokenlist_top(tokenlist);
+    switch (ast->type) {
+        case AST_IDENT_DECL:
+            if (token->type == TOKEN_EQ) {
+                tokenlist_pop(tokenlist);
+                ast_append_child(ast, parse_assignment_expr(tokenlist, symbol_table));
+            } else {
+                ast_append_child(ast, ast_new(AST_NULL, 0));
+            }
+            break;
+        default:
+            assert_syntax(0);
+    }
+    return ast;
 }
 
 Ast* parse_declarator(TokenList* tokenlist, SymbolTable* symbol_table, CType* basic_ctype) {
@@ -638,7 +654,7 @@ Ast* parse_function_definition(TokenList* tokenlist, SymbolTable* symbol_table) 
     size_t i = 0, size = param_list->children->size;
     for (i = 0; i < size; i++) {
         Ast* param_ident = ast_nth_child(ast_nth_child(param_list, i), 0);
-        symbol_table_add_entry(
+        symbol_table_insert(
             func_scope_table,
             str_new(param_ident->value_ident),
             ctype_copy(param_ident->ctype)

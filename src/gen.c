@@ -77,15 +77,15 @@ void put_code(FILE* file_ptr, Vector* codes) {
 
 // expression-code-generator
 void gen_primary_expr_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env) {
+    int stack_index = 0;
+
     switch (ast->type) {
         case AST_IMM_INT:
             append_code(env->codes, "\tpush $%d\n", ast->value_int);
             break;
         case AST_IDENT:
-            append_code(
-                env->codes, "\tmov -%d(%%rbp), %%eax\n",
-                symbol_table_get_stack_index(symbol_table, ast->value_ident)
-            );
+            stack_index = symbol_table_get_stack_index(symbol_table, ast->value_ident);
+            append_code(env->codes, "\tmov -%d(%%rbp), %%eax\n", stack_index);
             append_code(env->codes, "\tpush %%rax\n");
             break;
         default:
@@ -508,8 +508,34 @@ void gen_stmt_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env) {
 }
 
 // declaration-code-generator
-void gen_declaration_list_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env) {}
-void gen_declaration_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env) {}
+void gen_declaration_list_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env) {
+    size_t i = 0, size = ast->children->size;
+    for (i = 0; i < size; i++) {
+        gen_declaration_code(ast_nth_child(ast, i), symbol_table, env);
+    }
+}
+
+void gen_declaration_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env) {
+    Ast* child = NULL;
+    int stack_index = 0;
+
+    switch(ast->type) {
+        case AST_IDENT_DECL:
+            child = ast_nth_child(ast, 1);
+            if (child->type == AST_NULL) break;
+            gen_expr_code(child, symbol_table, env);
+            child = ast_nth_child(ast, 0);
+            stack_index = symbol_table_get_stack_index(symbol_table, child->value_ident);
+            append_code(env->codes, "\tpop %%rax\n", stack_index);
+            append_code(env->codes, "\tmov %%eax, -%d(%%rbp)\n", stack_index);
+            break;
+        case AST_FUNC_DECL:
+            /* Do Nothing */
+            break;
+        default:
+            assert_code_gen(0);
+    }
+}
 
 // external-definition-generator
 void gen_function_definition_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env) {

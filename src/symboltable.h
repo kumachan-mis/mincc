@@ -30,7 +30,7 @@ typedef struct _SymbolTable {
 // symbol-table
 SymbolTable* symbol_table_new();
 void symbol_table_enter_into_scope(SymbolTable* symbol_table, SymbolTable* parent);
-void symbol_table_add_entry(SymbolTable* symbol_table, char* symbol_name, CType* ctype);
+void symbol_table_insert(SymbolTable* symbol_table, char* symbol_name, CType* ctype);
 CType* symbol_table_get_ctype(SymbolTable* symbol_table, char* symbol_name);
 int symbol_table_get_stack_index(SymbolTable* symbol_table, char* symbol_name);
 void symbol_table_exit_from_scope(SymbolTable* symbol_table, SymbolTable* parent);
