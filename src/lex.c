@@ -17,6 +17,8 @@ void skip_spaces(FILE* file_ptr);
 // token
 TokenList* tokenlist_new();
 Token* token_new(TokenType type);
+Token* token_new_int(TokenType type, int value_int);
+Token* token_new_ident(TokenType type, char* value_ident);
 void token_delete(Token* token);
 
 // assertion
@@ -49,26 +51,16 @@ Token* read_token(FILE* file_ptr) {
 }
 
 Token* read_token_keyword_or_ident(FILE* file_ptr) {
-    Token* token = NULL;
     char* value_ident = read_value_ident(file_ptr);
 
-    if (strcmp(value_ident, "do") == 0) {
-        token = token_new(TOKEN_DO);
-    } else if (strcmp(value_ident, "else") == 0) {
-        token = token_new(TOKEN_ELSE);
-    } else if (strcmp(value_ident, "for") == 0) {
-        token = token_new(TOKEN_FOR);
-    } else if (strcmp(value_ident, "if") == 0) {
-        token = token_new(TOKEN_IF);
-    } else if (strcmp(value_ident, "return") == 0) {
-        token = token_new(TOKEN_RETURN);
-    } else if (strcmp(value_ident, "while") == 0) {
-        token = token_new(TOKEN_WHILE);
-    } else {
-        token = token_new(TOKEN_IDENT);
-        token->value_ident = value_ident;
-    }
-    return token;
+    if (strcmp(value_ident, "do") == 0)          return token_new(TOKEN_DO);
+    else if (strcmp(value_ident, "else") == 0)   return token_new(TOKEN_ELSE);
+    else if (strcmp(value_ident, "for") == 0)    return token_new(TOKEN_FOR);
+    else if (strcmp(value_ident, "if") == 0)     return token_new(TOKEN_IF);
+    else if (strcmp(value_ident, "int") == 0)    return token_new(TOKEN_INT);
+    else if (strcmp(value_ident, "return") == 0) return token_new(TOKEN_RETURN);
+    else if (strcmp(value_ident, "while") == 0)  return token_new(TOKEN_WHILE);
+    return token_new_ident(TOKEN_IDENT, value_ident);
 }
 
 char* read_value_ident(FILE* file_ptr) {
@@ -100,18 +92,16 @@ char* read_value_ident(FILE* file_ptr) {
 }
 
 Token* read_token_int(FILE* file_ptr) {
-    int value = 0;
+    int value_int = 0;
     while (1) {
         char c = fgetc(file_ptr);
         if (!isdigit(c)) {
             ungetc(c, file_ptr);
             break;
         }
-        value = 10 * value + (c - '0');
+        value_int = 10 * value_int + (c - '0');
     }
-    Token* token = token_new(TOKEN_INT_CONST);
-    token->value_int = value;
-    return token;
+    return token_new_int(TOKEN_IMM_INT, value_int);;
 }
 
 Token* read_token_punct(FILE* file_ptr) {
@@ -224,6 +214,18 @@ void tokenlist_delete(TokenList* tokenlist) {
 Token* token_new(TokenType type) {
     Token* token = (Token*)safe_malloc(sizeof(Token));
     token->type = type;
+    return token;
+}
+
+Token* token_new_int(TokenType type, int value_int) {
+    Token* token = token_new(type);
+    token->value_int = value_int;
+    return token;
+}
+
+Token* token_new_ident(TokenType type, char* value_ident) {
+    Token* token = token_new(type);
+    token->value_ident = value_ident;
     return token;
 }
 

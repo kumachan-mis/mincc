@@ -12,6 +12,7 @@ typedef enum {
     TOKEN_ELSE,
     TOKEN_FOR,
     TOKEN_IF,
+    TOKEN_INT,
     TOKEN_RETURN,
     TOKEN_WHILE,
 
@@ -19,7 +20,7 @@ typedef enum {
     TOKEN_IDENT,
 
     // constant
-    TOKEN_INT_CONST,
+    TOKEN_IMM_INT,
 
     // punctuator
     TOKEN_LPAREN,

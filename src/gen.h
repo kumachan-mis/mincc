@@ -10,8 +10,6 @@
 typedef struct {
     char* funcname;
     int num_labels;
-    int stack_offset;
-    Map* var_map;
     Vector* codes;
 } CodeEnvironment;
 
