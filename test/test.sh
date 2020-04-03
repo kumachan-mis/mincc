@@ -370,6 +370,30 @@ int main() {
 }"                           "19\$"
 
 test_mincc "
+int incr(int x) { return x + 1; }
+int main() {
+    int x; 
+    x = -6;
+    put_int(incr(incr(x)));
+    put_int(x);
+    return 0;
+}"                           "-4\$-6\$"
+
+test_mincc "
+int incr(int* x) {
+    *x = *x + 1;
+    return *x;
+}
+
+int main() {
+    int x; 
+    x = 4;
+    put_int(incr(&x));
+    put_int(x);
+    return 0;
+}"                           "5\$5\$"
+
+test_mincc "
 int fib(int n) {
     if (n <= 0)           return 0;
     if (n == 1 || n == 2) return 1;
