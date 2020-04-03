@@ -133,6 +133,14 @@ Ast* parse_unary_expr(TokenList* tokenlist, SymbolTable* symbol_table) {
 
     Token* token = tokenlist_top(tokenlist);
     switch (token->type) {
+        case TOKEN_AND:
+            tokenlist_pop(tokenlist);
+            ast = ast_new(AST_ADDR, 1, parse_unary_expr(tokenlist, symbol_table));
+            break;
+        case TOKEN_ASTERISK:
+            tokenlist_pop(tokenlist);
+            ast = ast_new(AST_DEREF, 1, parse_unary_expr(tokenlist, symbol_table));
+            break;
         case TOKEN_PLUS:
             tokenlist_pop(tokenlist);
             ast = ast_new(AST_POSI, 1, parse_unary_expr(tokenlist, symbol_table));
@@ -588,7 +596,15 @@ Ast* parse_init_declarator(TokenList* tokenlist, SymbolTable* symbol_table, CTyp
 }
 
 Ast* parse_declarator(TokenList* tokenlist, SymbolTable* symbol_table, CType* basic_ctype) {
-    return parse_direct_declarator(tokenlist, symbol_table, basic_ctype);
+    CType* ctype = basic_ctype;
+    while (1) {
+        Token* token = tokenlist_top(tokenlist);
+        if (token->type != TOKEN_ASTERISK) break;
+        tokenlist_pop(tokenlist);
+        ctype = ctype_new_ptr(ctype);
+    }
+    Ast* ast = parse_direct_declarator(tokenlist, symbol_table, ctype);
+    return ast;
 }
 
 Ast* parse_direct_declarator(TokenList* tokenlist, SymbolTable* symbol_table, CType* ctype) {
@@ -784,7 +800,8 @@ int is_postfix_expr(AstType type) {
 }
 
 int is_unary_expr(AstType type) {
-    return type == AST_POSI || type == AST_NEGA ||
+    return type == AST_ADDR || type == AST_DEREF ||
+           type == AST_POSI || type == AST_NEGA  ||
            type == AST_NOT  || type == AST_LNOT;
 }
 

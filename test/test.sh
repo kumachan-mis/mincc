@@ -172,6 +172,22 @@ int main() {
     return 0;
 }"                            "4\$"
 
+test_mincc "
+int main() {
+    int x = 10;
+    put_int(&*x);
+    put_int(*&x);
+    return 0;
+}"                            "10\$10\$"
+
+test_mincc "
+int main() {
+    int x = 0;
+    int *y = &x;
+    *y = 3;
+    put_int(x);
+    return 0;
+}"                            "3\$"
 
 test_mincc "
 int main() {
@@ -352,6 +368,30 @@ int main() {
     put_int(2*x - six() + five());
     return 0;
 }"                           "19\$"
+
+test_mincc "
+int incr(int x) { return x + 1; }
+int main() {
+    int x; 
+    x = -6;
+    put_int(incr(incr(x)));
+    put_int(x);
+    return 0;
+}"                           "-4\$-6\$"
+
+test_mincc "
+int incr(int* x) {
+    *x = *x + 1;
+    return *x;
+}
+
+int main() {
+    int x; 
+    x = 4;
+    put_int(incr(&x));
+    put_int(x);
+    return 0;
+}"                           "5\$5\$"
 
 test_mincc "
 int fib(int n) {

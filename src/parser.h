@@ -15,7 +15,9 @@ typedef enum {
     AST_FUNC_CALL,
     // argument-expression-list
     AST_ARG_LIST,
-    // unary-expression:
+    // unary-expression
+    AST_ADDR,
+    AST_DEREF,
     AST_POSI,
     AST_NEGA,
     AST_NOT,
