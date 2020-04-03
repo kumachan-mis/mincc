@@ -1,9 +1,8 @@
-#ifndef _LEX_H_
-#define _LEX_H_
+#ifndef _TOKEN_H_
+#define _TOKEN_H_
 
 
-#include <stdio.h>
-#include "vector.h"
+#include "../common/vector.h"
 
 
 typedef enum {
@@ -68,11 +67,18 @@ typedef struct {
     int pos;
 } TokenList;
 
-TokenList* tokenize(FILE* file_ptr);
 
+// tokenlist
+TokenList* tokenlist_new();
 Token* tokenlist_top(TokenList* tokenlist);
 void tokenlist_pop(TokenList* tokenlist);
 void tokenlist_delete(TokenList* tokenlist);
 
+// token
+Token* token_new(TokenType type);
+Token* token_new_int(TokenType type, int value_int);
+Token* token_new_ident(TokenType type, char* value_ident);
+void token_delete(Token* token);
 
-#endif // _LEX_H_
+
+#endif  // _TOKEN_H_
