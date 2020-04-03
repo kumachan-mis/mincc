@@ -172,6 +172,22 @@ int main() {
     return 0;
 }"                            "4\$"
 
+test_mincc "
+int main() {
+    int x = 10;
+    put_int(&*x);
+    put_int(*&x);
+    return 0;
+}"                            "10\$10\$"
+
+test_mincc "
+int main() {
+    int x = 0;
+    int *y = &x;
+    *y = 3;
+    put_int(x);
+    return 0;
+}"                            "3\$"
 
 test_mincc "
 int main() {
