@@ -1,7 +1,7 @@
 #include <assert.h>
 #include <stdio.h>
-#include "../src/map.h"
-#include "../src/memory.h"
+#include "../src/common/map.h"
+#include "../src/common/memory.h"
 
 
 int main() {

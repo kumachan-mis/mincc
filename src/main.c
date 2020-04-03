@@ -1,6 +1,6 @@
-#include "lex.h"
-#include "parser.h"
-#include "gen.h"
+#include "lex/lex.h"
+#include "parser/parser.h"
+#include "gen/gen.h"
 
 
 int main(int argc, char* argv[]) {

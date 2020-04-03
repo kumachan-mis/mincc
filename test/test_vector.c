@@ -1,7 +1,7 @@
 #include <assert.h>
 #include <stdio.h>
-#include "../src/vector.h"
-#include "../src/memory.h"
+#include "../src/common/vector.h"
+#include "../src/common/memory.h"
 
 
 int main() {

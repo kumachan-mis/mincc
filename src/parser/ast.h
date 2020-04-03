@@ -1,10 +1,9 @@
-#ifndef _PARSER_H_
-#define _PARSER_H_
+#ifndef _AST_H_
+#define _AST_H_
 
 
-#include "lex.h"
-#include "vector.h"
 #include "symboltable.h"
+#include "../common/vector.h"
 
 
 typedef enum {
@@ -91,13 +90,22 @@ typedef struct {
     int pos;
 } AstList;
 
-AstList* parse(TokenList* tokenlist);
 
+// astlist
 Ast* astlist_top(AstList* astlist);
 void astlist_pop(AstList* astlist);
 void astlist_delete(AstList* astlist);
 Ast* ast_nth_child(Ast* ast, size_t n);
 
+// ast
+AstList* astlist_new();
+Ast* ast_new(AstType type, size_t num_children, ...);
+Ast* ast_new_int(AstType type, int value_int);
+Ast* ast_new_ident(AstType type, char* value_ident, CType* ctype);
+void ast_append_child(Ast* ast, Ast* child);
+void ast_delete(Ast* ast);
+
+// expression-ast-classifier
 int is_primary_expr(AstType type);
 int is_postfix_expr(AstType type);
 int is_unary_expr(AstType type);
@@ -110,13 +118,17 @@ int is_bitwise_expr(AstType type);
 int is_logical_expr(AstType type);
 int is_assignment_expr(AstType type);
 int is_null_expr(AstType type);
+
+// statement-ast-classifier
 int is_compound_stmt(AstType type);
 int is_expr_stmt(AstType type);
 int is_selection_stmt(AstType type);
 int is_iteration_stmt(AstType type);
 int is_jump_stmt(AstType type);
+
+// declaration-ast-classifier
 int is_declaration_list(AstType type);
 int is_declaration(AstType type);
 
 
-#endif  // _PARSER_H_
+#endif  // _AST_H_
