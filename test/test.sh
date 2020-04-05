@@ -6,20 +6,22 @@ setup_test() {
 
 test_mincc() {
     MINCC=./build/mincc.out
-    TESTLIB=./build/testlib.s
-    ASSEMBLY=./build/out.s
+    IN_C=./build/in.c
+    OUT_ASSEMBLY=./build/out.s
+    LIB=./build/testlib.s
     EXEC=./build/out
 
     input=$1
     expected=$2
-    echo ${input} | ${MINCC} ${input} > ${ASSEMBLY}
+    echo ${input} > ${IN_C}
+    ${MINCC} ${IN_C} ${OUT_ASSEMBLY}
 
     if [ $? -ne 0 ]; then
         echo "\e[0;31m[FAIL]\e[m failed to compile"
         exit 1
     fi
 
-    gcc-9 ${ASSEMBLY} ${TESTLIB} -o ${EXEC}
+    gcc-9 ${OUT_ASSEMBLY} ${LIB} -o ${EXEC}
     actual=$(${EXEC} | tr '\n' '$')
 
     if [ ${actual} = ${expected} ]; then
@@ -29,7 +31,7 @@ test_mincc() {
         exit 1
     fi
 
-    rm -Rf ${ASSEMBLY} ${EXEC}
+    rm -Rf ${IN_C} ${OUT_ASSEMBLY} ${EXEC}
 }
 
 teardown_test() {

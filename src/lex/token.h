@@ -67,6 +67,13 @@ typedef struct {
     int pos;
 } TokenList;
 
+ typedef struct {
+    char* value_token;
+    TokenType type;
+ } ReservedTokenEntry;
+
+typedef Vector ReservedTokenList;
+
 
 // tokenlist
 TokenList* tokenlist_new();
@@ -79,6 +86,12 @@ Token* token_new(TokenType type);
 Token* token_new_int(TokenType type, int value_int);
 Token* token_new_ident(TokenType type, char* value_ident);
 void token_delete(Token* token);
+
+// reserved-token-list
+ReservedTokenList* reserved_token_list_new_punctuators();
+ReservedTokenList* reserved_token_list_new_keywords();
+ReservedTokenEntry* reserved_token_list_at(ReservedTokenList* reserved_token_list, size_t index);
+void reserved_token_list_delete(ReservedTokenList* reserved_token_list);
 
 
 #endif  // _TOKEN_H_
