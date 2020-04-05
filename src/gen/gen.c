@@ -1,6 +1,5 @@
 #include "gen.h"
 
-#include <stdio.h>
 #include <stdlib.h>
 #include "codenv.h"
 #include "../parser/symboltable.h"
@@ -49,18 +48,19 @@ void gen_function_definition_code(Ast* ast, SymbolTable* symbol_table, CodeEnvir
 void assert_code_gen(int condition);
 
 
-void print_code(AstList* astlist) {
+void print_code(FILE* file_ptr, AstList* astlist) {
+    Vector* codes = vector_new();
     while (1) {
         Ast* ast = astlist_top(astlist);
         if (ast == NULL) break;
 
         CodeEnvironment* env = code_environment_new();
         gen_function_definition_code(ast, NULL, env);
-        put_code(stdout, env->codes);
-
+        vector_join(codes, env->codes);
         code_environment_delete(env);
         astlist_pop(astlist);
     }
+    put_code(file_ptr, codes);
 }
 
 void put_code(FILE* file_ptr, Vector* codes) {
