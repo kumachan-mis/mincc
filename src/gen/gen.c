@@ -356,7 +356,7 @@ void gen_null_expr_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* en
 
 void gen_expr_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env) {
      AstType type = ast->type;
-         if (is_primary_expr(type))        gen_primary_expr_code(ast, symbol_table, env);
+    if (is_primary_expr(type))             gen_primary_expr_code(ast, symbol_table, env);
     else if (is_postfix_expr(type))        gen_postfix_expr_code(ast, symbol_table, env);
     else if (is_unary_expr(type))          gen_unary_expr_code(ast, symbol_table, env);
     else if (is_multiplicative_expr(type)) gen_multiplicative_expr_code(ast, symbol_table, env);
@@ -532,20 +532,12 @@ void gen_jump_stmt_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* en
 
 void gen_stmt_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env) {
     AstType type = ast->type;
-
-    if (is_compound_stmt(type)) {
-        gen_compound_stmt_code(ast, symbol_table, env);
-    } else if (is_expr_stmt(type)) {
-        gen_expr_stmt_code(ast, symbol_table, env);
-    } else if (is_selection_stmt(type)) {
-        gen_selection_stmt_code(ast, symbol_table, env);
-    } else if(is_iteration_stmt(type)) {
-        gen_iteration_stmt_code(ast, symbol_table, env);
-    } else if (is_jump_stmt(type)) {
-        gen_jump_stmt_code(ast, symbol_table, env);
-    } else  {
-        assert_code_gen(0);
-    }
+    if (is_compound_stmt(type))       gen_compound_stmt_code(ast, symbol_table, env);
+    else if (is_expr_stmt(type))      gen_expr_stmt_code(ast, symbol_table, env);
+    else if (is_selection_stmt(type)) gen_selection_stmt_code(ast, symbol_table, env);
+    else if(is_iteration_stmt(type))  gen_iteration_stmt_code(ast, symbol_table, env);
+    else if (is_jump_stmt(type))      gen_jump_stmt_code(ast, symbol_table, env);
+    else                              assert_code_gen(0);
 }
 
 // declaration-code-generator
