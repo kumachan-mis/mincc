@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include "lex/lex.h"
 #include "parser/parser.h"
+#include "semanalyzer/semanalyzer.h"
 #include "gen/gen.h"
 
 
@@ -19,6 +20,7 @@ int main(int argc, char* argv[]) {
     fclose(input_file_ptr);
 
     AstList* astlist = parse(tokenlist);
+    analyze_semantics(astlist);
 
     FILE* output_file_ptr = safe_fopen(argv[2], "w");
     print_code(output_file_ptr, astlist);

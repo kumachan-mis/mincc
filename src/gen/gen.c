@@ -14,7 +14,6 @@ void put_code(FILE* file_ptr, Vector* codes);
 // expression-code-generator
 void gen_primary_expr_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env);
 void gen_postfix_expr_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env);
-void gen_arg_expr_list_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env);
 void gen_unary_expr_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env);
 void gen_multiplicative_expr_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env);
 void gen_additive_expr_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env);
@@ -55,14 +54,14 @@ void print_code(FILE* file_ptr, AstList* astlist) {
     while (1) {
         Ast* ast = astlist_top(astlist);
         if (ast == NULL) break;
-
         CodeEnvironment* env = code_environment_new();
-        gen_function_definition_code(ast, NULL, env);
+        gen_function_definition_code(ast, astlist->symbol_table, env);
         vector_join(codes, env->codes);
         code_environment_delete(env);
         astlist_pop(astlist);
     }
     put_code(file_ptr, codes);
+    astlist->pos = 0;
 }
 
 void put_code(FILE* file_ptr, Vector* codes) {
@@ -97,26 +96,22 @@ void gen_postfix_expr_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment*
 
     switch (ast->type) {
         case AST_FUNC_CALL:
+            // TODO: callable object not only an ident
             assert_code_gen(lhs->type == AST_IDENT);
-            gen_arg_expr_list_code(rhs, symbol_table, env);
+            size_t i = 0, num_args = rhs->children->size;
+            // TODO: more than six arguments
+            assert_code_gen(num_args <= 6);
+            for (i = 0; i < num_args; i++) {
+                gen_expr_code(ast_nth_child(rhs, i), symbol_table, env);
+            }
+            for (i = 0; i < num_args; i++) {
+                append_code(env->codes, "\tpop %%%s\n", arg_register[num_args - i - 1]);
+            }
             append_code(env->codes, "\tcall _%s\n", lhs->value_ident);
             append_code(env->codes, "\tpush %%rax\n");
             break;
         default:
             assert_code_gen(0);
-    }
-}
-
-void gen_arg_expr_list_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env) {
-    size_t num_args = ast->children->size;
-    assert_code_gen(num_args <= 6);
-
-    size_t i = 0;
-    for (i = 0; i < num_args; i++) {
-        gen_expr_code(ast_nth_child(ast, i), symbol_table, env);
-    }
-    for (i = 0; i < num_args; i++) {
-        append_code(env->codes, "\tpop %%%s\n", arg_register[num_args - i - 1]);
     }
 }
 
@@ -345,17 +340,17 @@ void gen_assignment_expr_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironme
 }
 
 void gen_null_expr_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env) {
-     switch (ast->type) {
+    switch (ast->type) {
         case AST_NULL:
             /* Do Nothing */
             break;
         default:
             assert_code_gen(0);
-     }
+    }
 }
 
 void gen_expr_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env) {
-     AstType type = ast->type;
+    AstType type = ast->type;
     if (is_primary_expr(type))             gen_primary_expr_code(ast, symbol_table, env);
     else if (is_postfix_expr(type))        gen_postfix_expr_code(ast, symbol_table, env);
     else if (is_unary_expr(type))          gen_unary_expr_code(ast, symbol_table, env);
@@ -582,10 +577,14 @@ void gen_function_definition_code(Ast* ast, SymbolTable* symbol_table, CodeEnvir
     env->funcname = str_new(function_ident->value_ident);
 
     size_t num_args = param_list->children->size;
+    // TODO: more than six arguments
     assert_code_gen(num_args <= 6);
     size_t i = 0;
     for (i = 0; i < num_args; i++) {
-        Ast* param_ident = ast_nth_child(ast_nth_child(param_list, i), 0);
+        Ast* param_decl = ast_nth_child(param_list, i);
+        // TODO: function as a param
+        assert_code_gen(param_decl->type == AST_IDENT_DECL);
+        Ast* param_ident = ast_nth_child(param_decl, 0);
         int stack_index = symbol_table_get_stack_index(block->symbol_table, param_ident->value_ident);
         append_code(env->codes, "\tmov %%%s, -%d(%%rbp)\n", arg_register[i], stack_index);
     }

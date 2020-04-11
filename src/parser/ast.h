@@ -88,6 +88,7 @@ typedef struct {
 typedef struct {
     Vector* inner_vector;
     int pos;
+    SymbolTable* symbol_table;
 } AstList;
 
 
@@ -101,7 +102,7 @@ Ast* ast_nth_child(Ast* ast, size_t n);
 AstList* astlist_new();
 Ast* ast_new(AstType type, size_t num_children, ...);
 Ast* ast_new_int(AstType type, int value_int);
-Ast* ast_new_ident(AstType type, char* value_ident, CType* ctype);
+Ast* ast_new_ident(AstType type, char* value_ident);
 void ast_append_child(Ast* ast, Ast* child);
 void ast_delete(Ast* ast);
 
