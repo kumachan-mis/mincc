@@ -14,11 +14,12 @@ void put_code(FILE* file_ptr, Vector* codes);
 // expression-code-generator
 void gen_primary_expr_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env);
 void gen_postfix_expr_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env);
-void gen_arg_expr_list_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env);
 void gen_unary_expr_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env);
-void gen_arithmetical_expr_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env);
+void gen_multiplicative_expr_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env);
+void gen_additive_expr_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env);
 void gen_shift_expr_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env);
-void gen_comparative_expr_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env);
+void gen_relational_expr_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env);
+void gen_equality_expr_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env);
 void gen_bitwise_expr_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env);
 void gen_logical_expr_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env);
 void gen_assignment_expr_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env);
@@ -53,14 +54,14 @@ void print_code(FILE* file_ptr, AstList* astlist) {
     while (1) {
         Ast* ast = astlist_top(astlist);
         if (ast == NULL) break;
-
         CodeEnvironment* env = code_environment_new();
-        gen_function_definition_code(ast, NULL, env);
+        gen_function_definition_code(ast, astlist->symbol_table, env);
         vector_join(codes, env->codes);
         code_environment_delete(env);
         astlist_pop(astlist);
     }
     put_code(file_ptr, codes);
+    astlist->pos = 0;
 }
 
 void put_code(FILE* file_ptr, Vector* codes) {
@@ -95,26 +96,22 @@ void gen_postfix_expr_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment*
 
     switch (ast->type) {
         case AST_FUNC_CALL:
+            // TODO: callable object not only an ident
             assert_code_gen(lhs->type == AST_IDENT);
-            gen_arg_expr_list_code(rhs, symbol_table, env);
+            size_t i = 0, num_args = rhs->children->size;
+            // TODO: more than six arguments
+            assert_code_gen(num_args <= 6);
+            for (i = 0; i < num_args; i++) {
+                gen_expr_code(ast_nth_child(rhs, i), symbol_table, env);
+            }
+            for (i = 0; i < num_args; i++) {
+                append_code(env->codes, "\tpop %%%s\n", arg_register[num_args - i - 1]);
+            }
             append_code(env->codes, "\tcall _%s\n", lhs->value_ident);
             append_code(env->codes, "\tpush %%rax\n");
             break;
         default:
             assert_code_gen(0);
-    }
-}
-
-void gen_arg_expr_list_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env) {
-    size_t num_args = ast->children->size;
-    assert_code_gen(num_args <= 6);
-
-    size_t i = 0;
-    for (i = 0; i < num_args; i++) {
-        gen_expr_code(ast_nth_child(ast, i), symbol_table, env);
-    }
-    for (i = 0; i < num_args; i++) {
-        append_code(env->codes, "\tpop %%%s\n", arg_register[num_args - i - 1]);
     }
 }
 
@@ -159,21 +156,13 @@ void gen_unary_expr_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* e
     }
 }
 
-void gen_arithmetical_expr_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env) {
+void gen_multiplicative_expr_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env) {
     gen_expr_code(ast_nth_child(ast, 0), symbol_table, env);
     gen_expr_code(ast_nth_child(ast, 1), symbol_table, env);
 
     append_code(env->codes, "\tpop %%rdi\n");
     append_code(env->codes, "\tpop %%rax\n");
     switch (ast->type) {
-        case AST_ADD:
-            append_code(env->codes, "\tadd %%edi, %%eax\n");
-            append_code(env->codes, "\tpush %%rax\n");
-            break;
-        case AST_SUB:
-            append_code(env->codes, "\tsub %%edi, %%eax\n");
-            append_code(env->codes, "\tpush %%rax\n");
-            break;
         case AST_MUL:
             append_code(env->codes, "\timul %%edi, %%eax\n");
             append_code(env->codes, "\tpush %%rax\n");
@@ -187,6 +176,26 @@ void gen_arithmetical_expr_code(Ast* ast, SymbolTable* symbol_table, CodeEnviron
             append_code(env->codes, "\tcltd\n");
             append_code(env->codes, "\tidiv %%edi\n");
             append_code(env->codes, "\tpush %%rdx\n");
+            break;
+        default:
+            assert_code_gen(0);
+    }
+}
+
+void gen_additive_expr_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env) {
+    gen_expr_code(ast_nth_child(ast, 0), symbol_table, env);
+    gen_expr_code(ast_nth_child(ast, 1), symbol_table, env);
+
+    append_code(env->codes, "\tpop %%rdi\n");
+    append_code(env->codes, "\tpop %%rax\n");
+    switch (ast->type) {
+        case AST_ADD:
+            append_code(env->codes, "\tadd %%edi, %%eax\n");
+            append_code(env->codes, "\tpush %%rax\n");
+            break;
+        case AST_SUB:
+            append_code(env->codes, "\tsub %%edi, %%eax\n");
+            append_code(env->codes, "\tpush %%rax\n");
             break;
         default:
             assert_code_gen(0);
@@ -212,7 +221,7 @@ void gen_shift_expr_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* e
     append_code(env->codes, "\tpush %%rax\n");
 }
 
-void gen_comparative_expr_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env) {
+void gen_equality_expr_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env) {
     gen_expr_code(ast_nth_child(ast, 0), symbol_table, env);
     gen_expr_code(ast_nth_child(ast, 1), symbol_table, env);
 
@@ -226,6 +235,21 @@ void gen_comparative_expr_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironm
         case AST_NEQ:
             append_code(env->codes, "\tsetne %%al\n");
             break;
+        default:
+            assert_code_gen(0);
+    }
+    append_code(env->codes, "\tmovzb %%al, %%eax\n");
+    append_code(env->codes, "\tpush %%rax\n");
+}
+
+void gen_relational_expr_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env) {
+    gen_expr_code(ast_nth_child(ast, 0), symbol_table, env);
+    gen_expr_code(ast_nth_child(ast, 1), symbol_table, env);
+
+    append_code(env->codes, "\tpop %%rdi\n");
+    append_code(env->codes, "\tpop %%rax\n");
+    append_code(env->codes, "\tcmp %%edi, %%eax\n");
+    switch (ast->type) {
         case AST_LT:
             append_code(env->codes, "\tsetl %%al\n");
             break;
@@ -316,47 +340,30 @@ void gen_assignment_expr_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironme
 }
 
 void gen_null_expr_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env) {
-     switch (ast->type) {
+    switch (ast->type) {
         case AST_NULL:
             /* Do Nothing */
             break;
         default:
             assert_code_gen(0);
-     }
+    }
 }
 
 void gen_expr_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env) {
-     AstType type = ast->type;
-    
-    if (is_primary_expr(type)) {
-        gen_primary_expr_code(ast, symbol_table, env);
-    } else if (is_postfix_expr(type)) {
-        gen_postfix_expr_code(ast, symbol_table, env);
-    } else if (is_unary_expr(type)) {
-        gen_unary_expr_code(ast, symbol_table, env);
-    } else if (
-        is_multiplicative_expr(type) ||
-        is_additive_expr(type)
-    ) {
-        gen_arithmetical_expr_code(ast, symbol_table, env);
-    } else if (is_shift_expr(type)) {
-        gen_shift_expr_code(ast, symbol_table, env);
-    } else if (
-        is_relational_expr(type) ||
-        is_equality_expr(type)
-    ) {
-        gen_comparative_expr_code(ast, symbol_table, env);
-    } else if (is_bitwise_expr(type)) {
-        gen_bitwise_expr_code(ast, symbol_table, env);
-    } else if (is_logical_expr(type)) {
-        gen_logical_expr_code(ast, symbol_table, env);
-    } else if (is_assignment_expr(type)) {
-        gen_assignment_expr_code(ast, symbol_table, env);
-    } else if (is_null_expr(type)) {
-        gen_null_expr_code(ast, symbol_table, env);
-    } else {
-        assert_code_gen(0);
-    }
+    AstType type = ast->type;
+    if (is_primary_expr(type))             gen_primary_expr_code(ast, symbol_table, env);
+    else if (is_postfix_expr(type))        gen_postfix_expr_code(ast, symbol_table, env);
+    else if (is_unary_expr(type))          gen_unary_expr_code(ast, symbol_table, env);
+    else if (is_multiplicative_expr(type)) gen_multiplicative_expr_code(ast, symbol_table, env);
+    else if (is_additive_expr(type))       gen_additive_expr_code(ast, symbol_table, env);
+    else if (is_shift_expr(type))          gen_shift_expr_code(ast, symbol_table, env);
+    else if (is_relational_expr(type))     gen_relational_expr_code(ast, symbol_table, env);
+    else if (is_equality_expr(type))       gen_equality_expr_code(ast, symbol_table, env);
+    else if (is_bitwise_expr(type))        gen_bitwise_expr_code(ast, symbol_table, env);
+    else if (is_logical_expr(type))        gen_logical_expr_code(ast, symbol_table, env);
+    else if (is_assignment_expr(type))     gen_assignment_expr_code(ast, symbol_table, env);
+    else if (is_null_expr(type))           gen_null_expr_code(ast, symbol_table, env);
+    else                                   assert_code_gen(0);
 }
 
 
@@ -520,20 +527,12 @@ void gen_jump_stmt_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* en
 
 void gen_stmt_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env) {
     AstType type = ast->type;
-
-    if (is_compound_stmt(type)) {
-        gen_compound_stmt_code(ast, symbol_table, env);
-    } else if (is_expr_stmt(type)) {
-        gen_expr_stmt_code(ast, symbol_table, env);
-    } else if (is_selection_stmt(type)) {
-        gen_selection_stmt_code(ast, symbol_table, env);
-    } else if(is_iteration_stmt(type)) {
-        gen_iteration_stmt_code(ast, symbol_table, env);
-    } else if (is_jump_stmt(type)) {
-        gen_jump_stmt_code(ast, symbol_table, env);
-    } else  {
-        assert_code_gen(0);
-    }
+    if (is_compound_stmt(type))       gen_compound_stmt_code(ast, symbol_table, env);
+    else if (is_expr_stmt(type))      gen_expr_stmt_code(ast, symbol_table, env);
+    else if (is_selection_stmt(type)) gen_selection_stmt_code(ast, symbol_table, env);
+    else if(is_iteration_stmt(type))  gen_iteration_stmt_code(ast, symbol_table, env);
+    else if (is_jump_stmt(type))      gen_jump_stmt_code(ast, symbol_table, env);
+    else                              assert_code_gen(0);
 }
 
 // declaration-code-generator
@@ -578,10 +577,14 @@ void gen_function_definition_code(Ast* ast, SymbolTable* symbol_table, CodeEnvir
     env->funcname = str_new(function_ident->value_ident);
 
     size_t num_args = param_list->children->size;
+    // TODO: more than six arguments
     assert_code_gen(num_args <= 6);
     size_t i = 0;
     for (i = 0; i < num_args; i++) {
-        Ast* param_ident = ast_nth_child(ast_nth_child(param_list, i), 0);
+        Ast* param_decl = ast_nth_child(param_list, i);
+        // TODO: function as a param
+        assert_code_gen(param_decl->type == AST_IDENT_DECL);
+        Ast* param_ident = ast_nth_child(param_decl, 0);
         int stack_index = symbol_table_get_stack_index(block->symbol_table, param_ident->value_ident);
         append_code(env->codes, "\tmov %%%s, -%d(%%rbp)\n", arg_register[i], stack_index);
     }

@@ -22,4 +22,4 @@ int ctype_equals(CType* ctype_x, CType* ctype_y);
 void ctype_delete(CType* ctype);
 
 
-#endif  // _CTYPE_H_
+#endif  // _TYPE_H_

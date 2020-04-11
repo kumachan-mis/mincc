@@ -12,6 +12,7 @@ AstList* astlist_new() {
     AstList* astlist = (AstList*)safe_malloc(sizeof(AstList));
     astlist->inner_vector = vector_new();
     astlist->pos = 0;
+    astlist->symbol_table = NULL;
     return astlist;
 }
 
@@ -31,6 +32,7 @@ void astlist_delete(AstList* astlist) {
         inner_vector->data[i] = NULL;
     }
     vector_delete(inner_vector);
+    symbol_table_delete(astlist->symbol_table);
     free(astlist);
 }
 
@@ -58,14 +60,14 @@ Ast* ast_new(AstType type, size_t num_children, ...) {
 Ast* ast_new_int(AstType type, int value_int) {
     Ast* ast = ast_new(type, 0);
     ast->value_int = value_int;
-    ast->ctype = ctype_new(CTYPE_INT);
+    ast->ctype = NULL;
     return ast;
 }
 
-Ast* ast_new_ident(AstType type, char* value_ident, CType* ctype) {
+Ast* ast_new_ident(AstType type, char* value_ident) {
     Ast* ast = ast_new(type, 0);
     ast->value_ident = value_ident;
-    ast->ctype = ctype;
+    ast->ctype = NULL;
     return ast;
 }
 
