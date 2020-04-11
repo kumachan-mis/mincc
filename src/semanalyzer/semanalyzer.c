@@ -81,6 +81,7 @@ void analyze_postfix_expr_semantics(Ast* ast, SymbolTable* symbol_table) {
             size_t i = 0, num_args = rhs->children->size;
             for (i = 0; i < num_args; i++) {
                 analyze_expr_semantics(ast_nth_child(rhs, i), symbol_table);
+                // TODO: function type and args type check
             }
             ctype = symbol_table_get_ctype(symbol_table, lhs->value_ident, 1);
             ast->ctype = ctype_copy(ctype);
