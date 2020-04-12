@@ -11,6 +11,7 @@ typedef enum {
     AST_IDENT,
     AST_IMM_INT,
     // postfix-expression
+    AST_ARRAY_SUBSC,
     AST_FUNC_CALL,
     // argument-expression-list
     AST_ARG_LIST,
@@ -67,6 +68,7 @@ typedef enum {
     // declaration
     AST_DECL_LIST,
     AST_IDENT_DECL,
+    AST_ARRAY_DECL,
     AST_FUNC_DECL,
     AST_PARAM_LIST,
 

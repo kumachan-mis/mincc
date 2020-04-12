@@ -558,12 +558,9 @@ Ast* parse_init_declarator(TokenList* tokenlist, CType* basic_ctype) {
     Token* token = tokenlist_top(tokenlist);
     switch (ast->type) {
         case AST_IDENT_DECL:
-            if (token->type == TOKEN_EQ) {
-                tokenlist_pop(tokenlist);
-                ast_append_child(ast, parse_assignment_expr(tokenlist));
-            } else {
-                ast_append_child(ast, ast_new(AST_NULL, 0));
-            }
+            if (token->type != TOKEN_EQ) break;
+            tokenlist_pop(tokenlist);
+            ast_append_child(ast, parse_assignment_expr(tokenlist));
             break;
         default:
             assert_syntax(0);

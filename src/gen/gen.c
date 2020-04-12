@@ -582,14 +582,13 @@ void gen_declaration_list_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironm
 }
 
 void gen_declaration_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env) {
-    Ast* lhs = NULL;
+    Ast* lhs = ast_nth_child(ast, 0);
     Ast* rhs = NULL;
 
     switch(ast->type) {
         case AST_IDENT_DECL:
-            lhs = ast_nth_child(ast, 0);
+            if (ast->children->size == 1) break;
             rhs = ast_nth_child(ast, 1);
-            if (rhs->type == AST_NULL) break;
             gen_expr_code(rhs, symbol_table, env);
             gen_lvalue_code(lhs, symbol_table, env);
             append_code(env->codes, "\tpop %%rdi\n");

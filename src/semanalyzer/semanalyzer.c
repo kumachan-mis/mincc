@@ -360,19 +360,14 @@ void analyze_declaration_list_semantics(Ast* ast, SymbolTable* symbol_table) {
 }
 
 void analyze_declaration_semantics(Ast* ast, SymbolTable* symbol_table) {
-    Ast* lhs = NULL;
+    Ast* lhs = ast_nth_child(ast, 0);
     Ast* rhs = NULL;
 
     switch(ast->type) {
         case AST_IDENT_DECL:
-            lhs = ast_nth_child(ast, 0);
+            symbol_table_insert(symbol_table, str_new(lhs->value_ident), ctype_copy(lhs->ctype));
+            if (ast->children->size == 1) break;
             rhs = ast_nth_child(ast, 1);
-            symbol_table_insert(
-                symbol_table,
-                str_new(lhs->value_ident),
-                ctype_copy(lhs->ctype)
-            );
-            if (rhs->type == AST_NULL) break;
             analyze_expr_semantics(rhs, symbol_table);
             assert_semantics(ctype_equals(lhs->ctype, rhs->ctype));
             break;
