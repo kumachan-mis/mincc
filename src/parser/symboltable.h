@@ -21,7 +21,8 @@ typedef struct _SymbolTable {
 SymbolTable* symbol_table_new();
 void symbol_table_enter_into_scope(SymbolTable* symbol_table, SymbolTable* parent);
 void symbol_table_insert(SymbolTable* symbol_table, char* symbol_name, CType* ctype);
-CType* symbol_table_get_ctype(SymbolTable* symbol_table, char* symbol_name, int is_callable);
+CType* symbol_table_get_ctype(SymbolTable* symbol_table, char* symbol_name);
+CType* symbol_table_get_function_ctype(SymbolTable* symbol_table, char* symbol_name);
 int symbol_table_get_stack_index(SymbolTable* symbol_table, char* symbol_name);
 void symbol_table_exit_from_scope(SymbolTable* symbol_table, SymbolTable* parent);
 void symbol_table_delete(SymbolTable* symbol_table);

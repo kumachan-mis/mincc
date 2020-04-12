@@ -192,6 +192,16 @@ int main() {
 
 test_mincc "
 int main() {
+    int x = 6;
+    int y = 15;
+    put_int(*(&x - 1));
+    put_int(*(&y + 1));
+    put_int(&x - &y);
+    return 0;
+}"                            "15\$6\$1\$"
+
+test_mincc "
+int main() {
     int x, y;
     x = five(); y = one();
     put_int(x+y);

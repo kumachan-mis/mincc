@@ -2,14 +2,13 @@
 
 #include <stdlib.h>
 #include "codenv.h"
+#include "genutil.h"
 #include "../parser/symboltable.h"
 #include "../common/memory.h"
 
 
 static char* arg_register[] = { "rdi", "rsi", "rdx", "rcx", "r8", "r9" };
 
-
-void put_code(FILE* file_ptr, Vector* codes);
 
 // expression-code-generator
 void gen_primary_expr_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env);
@@ -62,14 +61,6 @@ void print_code(FILE* file_ptr, AstList* astlist) {
     }
     put_code(file_ptr, codes);
     astlist->pos = 0;
-}
-
-void put_code(FILE* file_ptr, Vector* codes) {
-    size_t i = 0, size = codes->size;
-    for (i = 0; i < size; i++) {
-        char* str = (char*)vector_at(codes, i);
-        fputs(str, file_ptr);
-    }
 }
 
 // expression-code-generator
@@ -183,19 +174,66 @@ void gen_multiplicative_expr_code(Ast* ast, SymbolTable* symbol_table, CodeEnvir
 }
 
 void gen_additive_expr_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env) {
-    gen_expr_code(ast_nth_child(ast, 0), symbol_table, env);
-    gen_expr_code(ast_nth_child(ast, 1), symbol_table, env);
+    Ast* lhs = ast_nth_child(ast, 0);
+    Ast* rhs = ast_nth_child(ast, 1);
+    gen_expr_code(lhs, symbol_table, env);
+    gen_expr_code(rhs, symbol_table, env);
+    BasicCType lhs_basic_ctype = lhs->ctype->basic_ctype;
+    BasicCType rhs_basic_ctype = rhs->ctype->basic_ctype;
 
     append_code(env->codes, "\tpop %%rdi\n");
     append_code(env->codes, "\tpop %%rax\n");
     switch (ast->type) {
         case AST_ADD:
-            append_code(env->codes, "\tadd %%edi, %%eax\n");
-            append_code(env->codes, "\tpush %%rax\n");
+            if (
+                lhs_basic_ctype == CTYPE_INT &&
+                rhs_basic_ctype == CTYPE_INT
+            ) {
+                append_code(env->codes, "\tadd %%edi, %%eax\n");
+                append_code(env->codes, "\tpush %%rax\n");
+            } else if (
+                lhs_basic_ctype == CTYPE_PTR &&
+                rhs_basic_ctype == CTYPE_INT
+            ) {
+                append_code(env->codes, "\tsal $%d, %%edi\n", ilog2(ctype_size(lhs->ctype->ptr_to)));
+                append_code(env->codes, "\tadd %%rdi, %%rax\n");
+                append_code(env->codes, "\tpush %%rax\n");
+            } else if (
+                lhs_basic_ctype == CTYPE_INT &&
+                rhs_basic_ctype == CTYPE_PTR
+            ) {
+                append_code(env->codes, "\tsal $%d, %%eax\n", ilog2(ctype_size(rhs->ctype->ptr_to)));
+                append_code(env->codes, "\tadd %%rdi, %%rax\n");
+                append_code(env->codes, "\tpush %%rax\n");
+            } else {
+                assert_code_gen(0);
+            }
             break;
         case AST_SUB:
-            append_code(env->codes, "\tsub %%edi, %%eax\n");
-            append_code(env->codes, "\tpush %%rax\n");
+            if (
+                lhs_basic_ctype == CTYPE_INT &&
+                rhs_basic_ctype == CTYPE_INT
+            ) {
+                append_code(env->codes, "\tsub %%edi, %%eax\n");
+                append_code(env->codes, "\tpush %%rax\n");
+            } else if (
+                lhs_basic_ctype == CTYPE_PTR &&
+                rhs_basic_ctype == CTYPE_INT
+            ) {
+                append_code(env->codes, "\tsal $%d, %%edi\n", ilog2(ctype_size(lhs->ctype->ptr_to)));
+                append_code(env->codes, "\tsub %%rdi, %%rax\n");
+                append_code(env->codes, "\tpush %%rax\n");
+            } else if (
+                lhs_basic_ctype == CTYPE_PTR &&
+                rhs_basic_ctype == CTYPE_PTR &&
+                ctype_equals(lhs->ctype->ptr_to, rhs->ctype->ptr_to)
+            ) {
+                append_code(env->codes, "\tsub %%rdi, %%rax\n");
+                append_code(env->codes, "\tsar $%d, %%rax\n", ilog2(ctype_size(lhs->ctype->ptr_to)));
+                append_code(env->codes, "\tpush %%rax\n");
+            } else {
+                assert_code_gen(0);
+            }
             break;
         default:
             assert_code_gen(0);
