@@ -61,7 +61,7 @@ void analyze_primary_expr_semantics(Ast* ast, SymbolTable* symbol_table) {
             ast->ctype = ctype_new(CTYPE_INT);
             break;
         case AST_IDENT:
-            ctype = symbol_table_get_ctype(symbol_table, ast->value_ident, 0);
+            ctype = symbol_table_get_ctype(symbol_table, ast->value_ident);
             ast->ctype = ctype_copy(ctype);
             break;
         default:
@@ -83,7 +83,7 @@ void analyze_postfix_expr_semantics(Ast* ast, SymbolTable* symbol_table) {
                 analyze_expr_semantics(ast_nth_child(rhs, i), symbol_table);
                 // TODO: function type and args type check
             }
-            ctype = symbol_table_get_ctype(symbol_table, lhs->value_ident, 1);
+            ctype = symbol_table_get_function_ctype(symbol_table, lhs->value_ident);
             ast->ctype = ctype_copy(ctype);
             break;
         default:
@@ -137,9 +137,52 @@ void analyze_additive_expr_semantics(Ast* ast, SymbolTable* symbol_table) {
     Ast* rhs = ast_nth_child(ast, 1);
     analyze_expr_semantics(lhs, symbol_table);
     analyze_expr_semantics(rhs, symbol_table);
-    assert_semantics(lhs->ctype->basic_ctype == CTYPE_INT);
-    assert_semantics(rhs->ctype->basic_ctype == CTYPE_INT);
-    ast->ctype = ctype_new(CTYPE_INT);
+    BasicCType lhs_basic_ctype = lhs->ctype->basic_ctype;
+    BasicCType rhs_basic_ctype = rhs->ctype->basic_ctype;
+
+    switch (ast->type) {
+        case AST_ADD:
+            if (
+                lhs_basic_ctype == CTYPE_INT &&
+                rhs_basic_ctype == CTYPE_INT
+            )
+                ast->ctype = ctype_new(CTYPE_INT);
+            else if (
+                lhs_basic_ctype == CTYPE_PTR &&
+                rhs_basic_ctype == CTYPE_INT
+            )
+                ast->ctype = ctype_new(CTYPE_PTR);
+            else if (
+                lhs_basic_ctype == CTYPE_INT &&
+                rhs_basic_ctype == CTYPE_PTR
+            )
+                ast->ctype = ctype_new(CTYPE_PTR);
+            else
+                assert_semantics(0);
+            break;
+        case AST_SUB:
+            if (
+                lhs_basic_ctype == CTYPE_INT &&
+                rhs_basic_ctype == CTYPE_INT
+            )
+                ast->ctype = ctype_new(CTYPE_INT);
+            else if (
+                lhs_basic_ctype == CTYPE_PTR &&
+                rhs_basic_ctype == CTYPE_INT
+            )
+                ast->ctype = ctype_new(CTYPE_PTR);
+            else if (
+                lhs_basic_ctype == CTYPE_PTR &&
+                rhs_basic_ctype == CTYPE_PTR &&
+                ctype_equals(lhs->ctype->ptr_to, rhs->ctype->ptr_to)
+            )
+                ast->ctype = ctype_new(CTYPE_INT);
+            else
+                assert_semantics(0);
+            break;
+        default:
+            assert_semantics(0);
+    }
 }
 
 void analyze_shift_expr_semantics(Ast* ast, SymbolTable* symbol_table) {

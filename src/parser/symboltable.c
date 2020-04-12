@@ -39,7 +39,7 @@ void symbol_table_insert(SymbolTable* symbol_table, char* symbol_name, CType* ct
     map_insert(symbol_table->inner_map, symbol_name, entry);
 }
 
-CType* symbol_table_get_ctype(SymbolTable* symbol_table, char* symbol_name, int is_callable) {
+CType* symbol_table_get_ctype(SymbolTable* symbol_table, char* symbol_name) {
     if (symbol_table == NULL) {
         unbound_symbol_error(symbol_name);
         return NULL;
@@ -47,15 +47,25 @@ CType* symbol_table_get_ctype(SymbolTable* symbol_table, char* symbol_name, int 
 
     Entry* entry = (Entry*)map_find(symbol_table->inner_map, symbol_name);
     if (entry != NULL) return entry->ctype;
-    if (is_callable && symbol_table->parent == NULL) {
+    return symbol_table_get_ctype(symbol_table->parent, symbol_name);
+}
+
+CType* symbol_table_get_function_ctype(SymbolTable* symbol_table, char* symbol_name) {
+    if (symbol_table == NULL) {
+        unbound_symbol_error(symbol_name);
+        return NULL;
+    }
+
+    Entry* entry = (Entry*)map_find(symbol_table->inner_map, symbol_name);
+    if (entry != NULL) return entry->ctype;
+    if (symbol_table->parent == NULL) {
         fprintf(stderr, "Warning: no declaration of function '%s'\n", symbol_name);
         fprintf(stderr, "Warning: return type defaults to int\n");
         CType* default_return_ctype = ctype_new(CTYPE_INT);
         symbol_table_insert(symbol_table, str_new(symbol_name), default_return_ctype);
         return default_return_ctype;
-    } else {
-        return symbol_table_get_ctype(symbol_table->parent, symbol_name, is_callable);
     }
+    return symbol_table_get_function_ctype(symbol_table->parent, symbol_name);
 }
 
 int symbol_table_get_stack_index(SymbolTable* symbol_table, char* symbol_name) {
