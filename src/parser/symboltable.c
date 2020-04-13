@@ -32,7 +32,7 @@ void symbol_table_insert(SymbolTable* symbol_table, char* symbol_name, CType* ct
         return;
     }
 
-    symbol_table->stack_offset += ctype_size(ctype);
+    symbol_table->stack_offset += ctype->size;
     Entry* entry = (Entry*)safe_malloc(sizeof(Entry));
     entry->ctype = ctype;
     entry->stack_index = symbol_table->stack_offset;
@@ -61,7 +61,7 @@ CType* symbol_table_get_function_ctype(SymbolTable* symbol_table, char* symbol_n
     if (symbol_table->parent == NULL) {
         fprintf(stderr, "Warning: no declaration of function '%s'\n", symbol_name);
         fprintf(stderr, "Warning: return type defaults to int\n");
-        CType* default_return_ctype = ctype_new(CTYPE_INT);
+        CType* default_return_ctype = ctype_new_int();
         symbol_table_insert(symbol_table, str_new(symbol_name), default_return_ctype);
         return default_return_ctype;
     }

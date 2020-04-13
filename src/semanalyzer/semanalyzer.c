@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include "cast.h"
 #include "../common/memory.h"
 
 
@@ -58,11 +59,12 @@ void analyze_primary_expr_semantics(Ast* ast, SymbolTable* symbol_table) {
 
      switch (ast->type) {
         case AST_IMM_INT:
-            ast->ctype = ctype_new(CTYPE_INT);
+            ast->ctype = ctype_new_int();
             break;
         case AST_IDENT:
             ctype = symbol_table_get_ctype(symbol_table, ast->value_ident);
             ast->ctype = ctype_copy(ctype);
+            cast_inline_array_to_ptr(ast);
             break;
         default:
             assert_semantics(0);
@@ -111,11 +113,11 @@ void analyze_unary_expr_semantics(Ast* ast, SymbolTable* symbol_table) {
             break;
         case AST_NOT:
             assert_semantics(child->ctype->basic_ctype == CTYPE_INT);
-            ast->ctype = ctype_new(CTYPE_INT);
+            ast->ctype = ctype_new_int();
             break;
         case AST_LNOT:
             assert_semantics(child->ctype->basic_ctype == CTYPE_INT);
-            ast->ctype = ctype_new(CTYPE_INT);
+            ast->ctype = ctype_new_int();
             break;
         default:
             assert_semantics(0);
@@ -129,7 +131,7 @@ void analyze_multiplicative_expr_semantics(Ast* ast, SymbolTable* symbol_table) 
     analyze_expr_semantics(rhs, symbol_table);
     assert_semantics(lhs->ctype->basic_ctype == CTYPE_INT);
     assert_semantics(rhs->ctype->basic_ctype == CTYPE_INT);
-    ast->ctype = ctype_new(CTYPE_INT);
+    ast->ctype = ctype_new_int();
 }
 
 void analyze_additive_expr_semantics(Ast* ast, SymbolTable* symbol_table) {
@@ -146,17 +148,17 @@ void analyze_additive_expr_semantics(Ast* ast, SymbolTable* symbol_table) {
                 lhs_basic_ctype == CTYPE_INT &&
                 rhs_basic_ctype == CTYPE_INT
             )
-                ast->ctype = ctype_new(CTYPE_INT);
+                ast->ctype = ctype_new_int();
             else if (
                 lhs_basic_ctype == CTYPE_PTR &&
                 rhs_basic_ctype == CTYPE_INT
             )
-                ast->ctype = ctype_new(CTYPE_PTR);
+                ast->ctype = ctype_copy(lhs->ctype);
             else if (
                 lhs_basic_ctype == CTYPE_INT &&
                 rhs_basic_ctype == CTYPE_PTR
             )
-                ast->ctype = ctype_new(CTYPE_PTR);
+                ast->ctype = ctype_copy(rhs->ctype);
             else
                 assert_semantics(0);
             break;
@@ -165,18 +167,18 @@ void analyze_additive_expr_semantics(Ast* ast, SymbolTable* symbol_table) {
                 lhs_basic_ctype == CTYPE_INT &&
                 rhs_basic_ctype == CTYPE_INT
             )
-                ast->ctype = ctype_new(CTYPE_INT);
+                ast->ctype = ctype_new_int();
             else if (
                 lhs_basic_ctype == CTYPE_PTR &&
                 rhs_basic_ctype == CTYPE_INT
             )
-                ast->ctype = ctype_new(CTYPE_PTR);
+                ast->ctype = ctype_copy(lhs->ctype);
             else if (
                 lhs_basic_ctype == CTYPE_PTR &&
                 rhs_basic_ctype == CTYPE_PTR &&
                 ctype_equals(lhs->ctype->ptr_to, rhs->ctype->ptr_to)
             )
-                ast->ctype = ctype_new(CTYPE_INT);
+                ast->ctype = ctype_new_int();
             else
                 assert_semantics(0);
             break;
@@ -192,7 +194,7 @@ void analyze_shift_expr_semantics(Ast* ast, SymbolTable* symbol_table) {
     analyze_expr_semantics(rhs, symbol_table);
     assert_semantics(lhs->ctype->basic_ctype == CTYPE_INT);
     assert_semantics(rhs->ctype->basic_ctype == CTYPE_INT);
-    ast->ctype = ctype_new(CTYPE_INT);
+    ast->ctype = ctype_new_int();
 }
 
 void analyze_relational_expr_semantics(Ast* ast, SymbolTable* symbol_table) {
@@ -200,8 +202,10 @@ void analyze_relational_expr_semantics(Ast* ast, SymbolTable* symbol_table) {
     Ast* rhs = ast_nth_child(ast, 1);
     analyze_expr_semantics(lhs, symbol_table);
     analyze_expr_semantics(rhs, symbol_table);
-    assert_semantics(lhs->ctype->basic_ctype == rhs->ctype->basic_ctype);
-    ast->ctype = ctype_new(CTYPE_INT);
+    assert_semantics(lhs->ctype->basic_ctype == CTYPE_INT);
+    assert_semantics(rhs->ctype->basic_ctype == CTYPE_INT);
+    // TODO: not only int
+    ast->ctype = ctype_new_int();
 }
 
 void analyze_equality_expr_semantics(Ast* ast, SymbolTable* symbol_table) {
@@ -209,8 +213,10 @@ void analyze_equality_expr_semantics(Ast* ast, SymbolTable* symbol_table) {
     Ast* rhs = ast_nth_child(ast, 1);
     analyze_expr_semantics(lhs, symbol_table);
     analyze_expr_semantics(rhs, symbol_table);
-    assert_semantics(ctype_equals(lhs->ctype, rhs->ctype));
-    ast->ctype = ctype_new(CTYPE_INT);
+    assert_semantics(lhs->ctype->basic_ctype == CTYPE_INT);
+    assert_semantics(rhs->ctype->basic_ctype == CTYPE_INT);
+    // TODO: not only int
+    ast->ctype = ctype_new_int();
 }
 
 void analyze_bitwise_expr_semantics(Ast* ast, SymbolTable* symbol_table) {
@@ -220,11 +226,11 @@ void analyze_bitwise_expr_semantics(Ast* ast, SymbolTable* symbol_table) {
     analyze_expr_semantics(rhs, symbol_table);
     assert_semantics(lhs->ctype->basic_ctype == CTYPE_INT);
     assert_semantics(rhs->ctype->basic_ctype == CTYPE_INT);
-    ast->ctype = ctype_new(CTYPE_INT);
+    ast->ctype = ctype_new_int();
 }
 
 void analyze_logical_expr_semantics(Ast* ast, SymbolTable* symbol_table) {
-    ast->ctype = ctype_new(CTYPE_INT);
+    ast->ctype = ctype_new_int();
 }
 
 void analyze_assignment_expr_semantics(Ast* ast, SymbolTable* symbol_table) {
@@ -371,8 +377,13 @@ void analyze_declaration_semantics(Ast* ast, SymbolTable* symbol_table) {
             analyze_expr_semantics(rhs, symbol_table);
             assert_semantics(ctype_equals(lhs->ctype, rhs->ctype));
             break;
+        case AST_ARRAY_DECL:
+            symbol_table_insert(symbol_table, str_new(lhs->value_ident), ctype_copy(lhs->ctype));
+            if (ast->children->size == 1) break;
+            // TODO: initializer of arrays
+            break;
         case AST_FUNC_DECL:
-            /* Do Nothing */
+            // TODO: function type
             break;
         default:
             assert_semantics(0);
@@ -398,12 +409,30 @@ void analyze_function_definition_semantics(Ast* ast, SymbolTable* symbol_table) 
 
     size_t i = 0, size = param_list->children->size;
     for (i = 0; i < size; i++) {
-        Ast* param_ident = ast_nth_child(ast_nth_child(param_list, i), 0);
-        symbol_table_insert(
-            function_table,
-            str_new(param_ident->value_ident),
-            ctype_copy(param_ident->ctype)
-        );
+        Ast* param_decl = ast_nth_child(param_list, i);
+        Ast* param_ident = ast_nth_child(param_decl, 0);
+
+        switch (param_decl->type) {
+            case AST_IDENT_DECL:
+                symbol_table_insert(
+                    function_table,
+                    str_new(param_ident->value_ident),
+                    ctype_copy(param_ident->ctype)
+                );
+                break;
+            case AST_ARRAY_DECL:
+                symbol_table_insert(
+                    function_table,
+                    str_new(param_ident->value_ident),
+                    ctype_new_ptr(ctype_copy(param_ident->ctype->array_of))
+                );
+                break;
+            case AST_FUNC_DECL:
+                assert_semantics(0);
+                // TODO: function as a param
+            default:
+                assert_semantics(0);
+        }
     }
     block->symbol_table = function_table;
 

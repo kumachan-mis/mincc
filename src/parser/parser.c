@@ -91,6 +91,14 @@ Ast* parse_postfix_expr(TokenList* tokenlist) {
     while (1) {
         Token* token = tokenlist_top(tokenlist);
         switch (token->type) {
+            case TOKEN_LBRACKET:
+                tokenlist_pop(tokenlist);
+                ast = ast_new(
+                    AST_DEREF, 1,
+                    ast_new(AST_ADD, 2, ast, parse_assignment_expr(tokenlist))
+                );
+                assert_and_pop_token(tokenlist, TOKEN_RBRACKET);
+                break;
             case TOKEN_LPAREN:
                 tokenlist_pop(tokenlist);
                 ast = ast_new(AST_FUNC_CALL, 2, ast, parse_arg_expr_list(tokenlist));
@@ -544,7 +552,7 @@ CType* parse_type_specifier(TokenList* tokenlist) {
     switch (token->type) {
         case TOKEN_INT:
             tokenlist_pop(tokenlist);
-            ctype = ctype_new(CTYPE_INT);
+            ctype = ctype_new_int();
             break;
         default:
             assert_syntax(0);
@@ -561,6 +569,12 @@ Ast* parse_init_declarator(TokenList* tokenlist, CType* basic_ctype) {
             if (token->type != TOKEN_EQ) break;
             tokenlist_pop(tokenlist);
             ast_append_child(ast, parse_assignment_expr(tokenlist));
+            break;
+        case AST_ARRAY_DECL:
+            if (token->type != TOKEN_EQ) break;
+            // TODO: initializer of arrays
+            break;
+        case AST_FUNC_DECL:
             break;
         default:
             assert_syntax(0);
@@ -582,16 +596,26 @@ Ast* parse_declarator(TokenList* tokenlist, CType* basic_ctype) {
 
 Ast* parse_direct_declarator(TokenList* tokenlist, CType* ctype) {
     Ast* ast = NULL;
-    Ast* ident = NULL;
 
     Token* token_ident = assert_and_top_token(tokenlist, TOKEN_IDENT);
     tokenlist_pop(tokenlist);
+    Ast* ident = ast_new_ident(AST_IDENT, str_new(token_ident->value_ident));
 
     Token* token = tokenlist_top(tokenlist);
     switch (token->type) {
+        case TOKEN_LBRACKET:
+            tokenlist_pop(tokenlist);
+    
+            token = assert_and_top_token(tokenlist, TOKEN_IMM_INT);
+            tokenlist_pop(tokenlist);
+            ident->ctype = ctype_new_array(ctype, token->value_int);
+            // TODO: assignment-expr for array length
+
+            ast = ast_new(AST_ARRAY_DECL, 1, ident);
+            assert_and_pop_token(tokenlist, TOKEN_RBRACKET);
+            break;
         case TOKEN_LPAREN:
             tokenlist_pop(tokenlist);
-            ident = ast_new_ident(AST_IDENT, str_new(token_ident->value_ident));
             ident->ctype = ctype;
             ast = ast_new(AST_FUNC_DECL, 2, ident, parse_param_list(tokenlist));
             assert_and_pop_token(tokenlist, TOKEN_RPAREN);
@@ -599,9 +623,10 @@ Ast* parse_direct_declarator(TokenList* tokenlist, CType* ctype) {
         default:
             ident = ast_new_ident(AST_IDENT, str_new(token_ident->value_ident));
             ident->ctype = ctype;
-            ast = ast_new(AST_IDENT_DECL, 1, ident , ctype);
+            ast = ast_new(AST_IDENT_DECL, 1, ident);
             break;
     }
+    // TODO: loop for complex declatations
     return ast;
 }
 
