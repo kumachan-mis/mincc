@@ -614,12 +614,23 @@ Ast* parse_direct_declarator(TokenList* tokenlist, CType* ctype) {
             ast = ast_new(AST_ARRAY_DECL, 1, ident);
             assert_and_pop_token(tokenlist, TOKEN_RBRACKET);
             break;
-        case TOKEN_LPAREN:
+        case TOKEN_LPAREN: {
+            assert_syntax(ctype->basic_ctype == CTYPE_INT || ctype->basic_ctype == CTYPE_PTR);
             tokenlist_pop(tokenlist);
-            ident->ctype = ctype;
-            ast = ast_new(AST_FUNC_DECL, 2, ident, parse_param_list(tokenlist));
+            Ast* param_list = parse_param_list(tokenlist);
             assert_and_pop_token(tokenlist, TOKEN_RPAREN);
+    
+            Vector* param_types = vector_new();
+            size_t i = 0, size = param_list->children->size;
+            vector_reserve(param_types, size);
+            for (i = 0; i < size; i++) {
+                Ast* param_ident = ast_nth_child(ast_nth_child(param_list, i), 0);
+                vector_push_back(param_types, ctype_copy(param_ident->ctype));
+            }
+            ident->ctype = ctype_new_func(ctype, param_types);
+            ast = ast_new(AST_FUNC_DECL, 2, ident, param_list);
             break;
+        }
         default:
             ident = ast_new_ident(AST_IDENT, str_new(token_ident->value_ident));
             ident->ctype = ctype;
