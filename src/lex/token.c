@@ -75,6 +75,8 @@ ReservedTokenList* reserved_token_list_new_punctuators() {
     reserved_token_list_append(punctuator_list, ")",   TOKEN_RPAREN);
     reserved_token_list_append(punctuator_list, "{",   TOKEN_LBRACE);
     reserved_token_list_append(punctuator_list, "}",   TOKEN_RBRACE);
+    reserved_token_list_append(punctuator_list, "[",   TOKEN_LBRACKET);
+    reserved_token_list_append(punctuator_list, "]",   TOKEN_RBRACKET);
     reserved_token_list_append(punctuator_list, ",",   TOKEN_COMMA);
     reserved_token_list_append(punctuator_list, ";",   TOKEN_SEMICOLON);
     reserved_token_list_append(punctuator_list, "||",  TOKEN_DBL_BAR);

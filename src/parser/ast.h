@@ -21,6 +21,8 @@ typedef enum {
     AST_NEGA,
     AST_NOT,
     AST_LNOT,
+    // cast-expression
+    AST_ARRAY_TO_PTR,
     // multiplicative-expression
     AST_MUL,
     AST_DIV,
@@ -67,6 +69,7 @@ typedef enum {
     // declaration
     AST_DECL_LIST,
     AST_IDENT_DECL,
+    AST_ARRAY_DECL,
     AST_FUNC_DECL,
     AST_PARAM_LIST,
 
@@ -110,6 +113,7 @@ void ast_delete(Ast* ast);
 int is_primary_expr(AstType type);
 int is_postfix_expr(AstType type);
 int is_unary_expr(AstType type);
+int is_cast_expr(AstType type);
 int is_multiplicative_expr(AstType type);
 int is_additive_expr(AstType type);
 int is_shift_expr(AstType type);

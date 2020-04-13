@@ -202,6 +202,23 @@ int main() {
 
 test_mincc "
 int main() {
+    int a[5];
+    *a = 1;
+    a[1] = -3;
+    *(a+3) = 7;
+    *(a+2) = -2;
+    a[4] = 10;
+
+    int i = 0;
+    put_int(a[0]);
+    put_int(a[1]);
+    put_int(a[2]);
+    put_int(a[3]);
+    put_int(a[4]);
+}"                            "1\$-3\$-2\$7\$10\$"
+
+test_mincc "
+int main() {
     int x, y;
     x = five(); y = one();
     put_int(x+y);
@@ -372,6 +389,19 @@ int main() {
 }"                          "204\$"
 
 test_mincc "
+int main() {
+    int a[6];
+    int i = 0;
+    for (i = 0; i < 6; i = i + 1) {
+        if (i == 0) a[i] = 0;
+        else a[i] = i + a[i-1];
+    }
+    for (i = 0; i < 6; i = i + 1) {
+        put_int(a[i]);
+    }
+}"                          "0\$1\$3\$6\$10\$15\$"
+
+test_mincc "
 int six() { return 6; }
 int main() {
     int x; 
@@ -410,10 +440,46 @@ int fib(int n) {
     if (n == 1 || n == 2) return 1;
     return fib(n-1) + fib(n-2);
 }
+
 int main() {
     put_int(fib(11));
     return 0;
 }"                            "89\$"
+
+test_mincc "
+int fib(int n, int* a) {
+    if (a[n] != -1)       return a[n];
+    if (n == 0)           return a[n] = 0;
+    if (n == 1 || n == 2) return a[n] = 1;
+    return a[n] = fib(n-1, a) + fib(n-2, a);
+}
+
+int main() {
+    int i, a[46];
+    for (i = 0; i <= 45; i = i + 1) a[i] = -1;
+    put_int(fib(45, a));
+    return 0;
+}"                            "1134903170\$"
+
+test_mincc "
+int sq_array(int a[6]) {
+    int i;
+    for (i = 0; i < 6; i = i + 1) {
+        a[i] = i*i;
+    }
+    return a[5];
+}
+
+int main() {
+    int a[6];
+    sq_array(a);
+
+    int i;
+    for (i = 0; i < 6; i = i + 1) {
+        put_int(a[i]);
+    }
+    return 0;
+}"                            "0\$1\$4\$9\$16\$25\$"
 
 test_mincc "
 int add(int x, int y) {

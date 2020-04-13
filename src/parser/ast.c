@@ -117,6 +117,10 @@ int is_unary_expr(AstType type) {
            type == AST_NOT  || type == AST_LNOT;
 }
 
+int is_cast_expr(AstType type) {
+    return type == AST_ARRAY_TO_PTR;
+}
+
 int is_multiplicative_expr(AstType type) {
     return type == AST_MUL || type == AST_DIV || type == AST_MOD;
 }
