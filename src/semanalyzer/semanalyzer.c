@@ -80,13 +80,19 @@ void analyze_postfix_expr_semantics(Ast* ast, SymbolTable* symbol_table) {
         case AST_FUNC_CALL:
             // TODO: callable object not only an ident
             assert_semantics(lhs->type == AST_IDENT);
+
+            ctype = symbol_table_get_function_ctype(symbol_table, lhs->value_ident);
+            // assert_semantics(rhs->children->size == ctype->func->param_types->size);
+            // TODO: function declaration
             size_t i = 0, num_args = rhs->children->size;
             for (i = 0; i < num_args; i++) {
-                analyze_expr_semantics(ast_nth_child(rhs, i), symbol_table);
-                // TODO: function type and args type check
+                Ast* param = ast_nth_child(rhs, i);
+                // CType* param_ctype = vector_at(ctype->func->param_types, i);
+                analyze_expr_semantics(param, symbol_table);
+                // assert_semantics(ctype_equals(param->ctype, param_ctype));
+                // TODO: function declaration
             }
-            ctype = symbol_table_get_function_ctype(symbol_table, lhs->value_ident);
-            ast->ctype = ctype_copy(ctype);
+            ast->ctype = ctype_copy(ctype->func->return_type);
             break;
         default:
             assert_semantics(0);
@@ -369,21 +375,19 @@ void analyze_declaration_semantics(Ast* ast, SymbolTable* symbol_table) {
     Ast* lhs = ast_nth_child(ast, 0);
     Ast* rhs = NULL;
 
+    symbol_table_insert(symbol_table, str_new(lhs->value_ident), ctype_copy(lhs->ctype));
     switch(ast->type) {
         case AST_IDENT_DECL:
-            symbol_table_insert(symbol_table, str_new(lhs->value_ident), ctype_copy(lhs->ctype));
             if (ast->children->size == 1) break;
             rhs = ast_nth_child(ast, 1);
             analyze_expr_semantics(rhs, symbol_table);
             assert_semantics(ctype_equals(lhs->ctype, rhs->ctype));
             break;
         case AST_ARRAY_DECL:
-            symbol_table_insert(symbol_table, str_new(lhs->value_ident), ctype_copy(lhs->ctype));
             if (ast->children->size == 1) break;
             // TODO: initializer of arrays
             break;
         case AST_FUNC_DECL:
-            // TODO: function type
             break;
         default:
             assert_semantics(0);
@@ -397,7 +401,6 @@ void analyze_function_definition_semantics(Ast* ast, SymbolTable* symbol_table) 
     Ast* param_list = ast_nth_child(function_decl, 1);
     Ast* block = ast_nth_child(ast, 1);
 
-    // TODO: function type
     symbol_table_insert(
         symbol_table,
         str_new(function_ident->value_ident),

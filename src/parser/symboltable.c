@@ -8,6 +8,7 @@
 // assertion
 void unbound_symbol_error();
 void redefinition_error();
+void assert_function_type(CType* ctype);
 
 
 // symbol-table
@@ -57,13 +58,16 @@ CType* symbol_table_get_function_ctype(SymbolTable* symbol_table, char* symbol_n
     }
 
     Entry* entry = (Entry*)map_find(symbol_table->inner_map, symbol_name);
-    if (entry != NULL) return entry->ctype;
+    if (entry != NULL) {
+        assert_function_type(entry->ctype);
+        return entry->ctype;
+    }
     if (symbol_table->parent == NULL) {
         fprintf(stderr, "Warning: no declaration of function '%s'\n", symbol_name);
         fprintf(stderr, "Warning: return type defaults to int\n");
-        CType* default_return_ctype = ctype_new_int();
-        symbol_table_insert(symbol_table, str_new(symbol_name), default_return_ctype);
-        return default_return_ctype;
+        CType* default_ctype = ctype_new_func(ctype_new_int(), vector_new());
+        symbol_table_insert(symbol_table, str_new(symbol_name), default_ctype);
+        return default_ctype;
     }
     return symbol_table_get_function_ctype(symbol_table->parent, symbol_name);
 }
@@ -97,5 +101,11 @@ void unbound_symbol_error(char* symbol_name) {
 }
 void redefinition_error(char* symbol_name) {
     fprintf(stderr, "Error: redefinition of %s\n", symbol_name);
+    exit(1);
+}
+
+void assert_function_type(CType* ctype) {
+    if (ctype->basic_ctype == CTYPE_FUNC) return;
+    fprintf(stderr, "Error: not function type\n");
     exit(1);
 }

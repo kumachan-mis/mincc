@@ -16,7 +16,7 @@ void cast_inline_array_to_ptr(Ast* ast) {
         ast->ctype == NULL ||
         ast->ctype->basic_ctype != CTYPE_ARRAY
     )
-    return;
+        return;
 
     Ast* array = ast_new_ident(AST_IDENT, ast->value_ident);
     array->ctype = ast->ctype;
