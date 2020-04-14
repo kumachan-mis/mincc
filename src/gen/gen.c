@@ -42,7 +42,7 @@ void gen_stmt_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env);
 void gen_declaration_list_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env);
 void gen_declaration_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env);
 
-// external-definition-generator
+// external-declaration-generator
 void gen_function_definition_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env);
 
 // assertion
@@ -621,7 +621,7 @@ void gen_declaration_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* 
     }
 }
 
-// external-definition-generator
+// external-declaration-generator
 void gen_function_definition_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env) {
     Ast* function_decl = ast_nth_child(ast, 0);
     Ast* function_ident = ast_nth_child(function_decl, 0);

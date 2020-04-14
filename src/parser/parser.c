@@ -40,7 +40,7 @@ Ast* parse_direct_declarator(TokenList* tokenlist, CType* ctype);
 Ast* parse_param_list(TokenList* tokenlist);
 Ast* parse_param_declaration(TokenList* tokenlist);
 
-// external-definition-parser
+// external-declaration-parser
 Ast* parse_function_definition(TokenList* tokenlist);
 
 // assertion
@@ -662,7 +662,7 @@ Ast* parse_param_declaration(TokenList* tokenlist) {
     return ast;
 }
 
-// external-definition-parser
+// external-declaration-parser
 Ast* parse_function_definition(TokenList* tokenlist) {
     CType* ctype = parse_type_specifier(tokenlist);
     Ast* decl = parse_declarator(tokenlist, ctype);

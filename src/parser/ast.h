@@ -73,7 +73,7 @@ typedef enum {
     AST_FUNC_DECL,
     AST_PARAM_LIST,
 
-    // external-definition
+    // external-declaration
     AST_FUNC_DEF,
 } AstType;
 

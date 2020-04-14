@@ -33,7 +33,7 @@ void analyze_stmt_semantics(Ast* ast, SymbolTable* symbol_table);
 void analyze_declaration_list_semantics(Ast* ast, SymbolTable* symbol_table);
 void analyze_declaration_semantics(Ast* ast, SymbolTable* symbol_table);
 
-// external-definition-semantics-analyzer
+// external-declaration-semantics-analyzer
 void analyze_function_definition_semantics(Ast* ast, SymbolTable* symbol_table);
 
 // assertion
@@ -394,7 +394,7 @@ void analyze_declaration_semantics(Ast* ast, SymbolTable* symbol_table) {
     }
 }
 
-// external-definition-semantics-analyzer
+// external-declaration-semantics-analyzer
 void analyze_function_definition_semantics(Ast* ast, SymbolTable* symbol_table) {
     Ast* function_decl = ast_nth_child(ast, 0);
     Ast* function_ident = ast_nth_child(function_decl, 0);
