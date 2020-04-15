@@ -42,100 +42,247 @@ teardown_test() {
 setup_test
 
 
-test_mincc "int main() { put_int(0);  return 0; }"   "0\$"
-test_mincc "int main() { put_int(42); return 0; }"  "42\$"
-
-test_mincc "int main() { put_int(1-6-10); return 0; }"          "-15\$"
-test_mincc "int main() { put_int(2+110-92); return 0; }"         "20\$"
-test_mincc "int main() { put_int(1000-990+121+92); return 0; }" "223\$"
-
-test_mincc "int main() { put_int(1*2 + 5*8); return 0; }"     "42\$"
-test_mincc "int main() { put_int(5*6 - 10/2); return 0; }"    "25\$"
-test_mincc "int main() { put_int(100/3/3); return 0; }"       "11\$"
-test_mincc "int main() { put_int(100%7 + 22%6 ) ; return 0; }" "6\$"
-
-test_mincc "int main() { put_int((1+2) * 3); return 0; }"              "9\$"
-test_mincc "int main() { put_int((6-3+1) * (9-6+7-2)); return 0; }"   "32\$"
-test_mincc "int main() { put_int((4*1) * (4/3) ); return 0; }"         "4\$"
-
-test_mincc "int main() { put_int(+ 1+6 ); return 0; }"       "7\$"
-test_mincc "int main() { put_int(-5+7*5); return 0; }"      "30\$"
-test_mincc "int main() { put_int(+5 + -5); return 0; }"      "0\$"
-test_mincc "int main() { put_int(+10 + (-8)); return 0; }"   "2\$"
-
-test_mincc "int main() { put_int(1 << 3); return 0; }"          "8\$"
-test_mincc "int main() { put_int(10 + (-1 <<2)); return 0; }"   "6\$"
-test_mincc "int main() { put_int(9 >> 1); return 0; }"          "4\$"
-test_mincc "int main() { put_int(23 + 7*(-6 >>1)); return 0; }" "2\$"
-
-test_mincc "int main() { put_int(0 == -1); return 0; }"    "0\$"
-test_mincc "int main() { put_int(0 == 0); return 0; }"     "1\$"
-test_mincc "int main() { put_int(0 == 1); return 0; }"     "0\$"
-test_mincc "int main() { put_int(0 != -1); return 0; }"    "1\$"
-test_mincc "int main() { put_int(0 != 0); return 0; }"     "0\$"
-test_mincc "int main() { put_int(0 != 1); return 0; }"     "1\$"
-test_mincc "int main() { put_int(0 < -1); return 0; }"     "0\$"
-test_mincc "int main() { put_int(0 < 0); return 0; }"      "0\$"
-test_mincc "int main() { put_int(0 < 1); return 0; }"      "1\$"
-test_mincc "int main() { put_int(0 > -1); return 0; }"     "1\$"
-test_mincc "int main() { put_int(0 > 0); return 0; }"      "0\$"
-test_mincc "int main() { put_int(0 > 1); return 0; }"      "0\$"
-test_mincc "int main() { put_int(0<=-1); return 0; }"      "0\$"
-test_mincc "int main() { put_int(0<= 0); return 0; }"      "1\$"
-test_mincc "int main() { put_int(0<= 1); return 0; }"      "1\$"
-test_mincc "int main() { put_int(0>=-1); return 0; }"      "1\$"
-test_mincc "int main() { put_int(0>= 0); return 0; }"      "1\$"
-test_mincc "int main() { put_int(0>= 1); return 0; }"      "0\$"
-test_mincc "int main() { put_int(0<1 == 1<2); return 0; }" "1\$"
-test_mincc "int main() { put_int(0<1 == 1>2); return 0; }" "0\$"
-test_mincc "int main() { put_int(0<1 != 1<2); return 0; }" "0\$"
-test_mincc "int main() { put_int(0<1 != 1>2); return 0; }" "1\$"
-
-test_mincc "int main() { put_int(2 & 1); return 0; }"      "0\$"
-test_mincc "int main() { put_int(3 & 6); return 0; }"      "2\$"
-test_mincc "int main() { put_int(2 ^ 1); return 0; }"      "3\$"
-test_mincc "int main() { put_int(3 ^ 6); return 0; }"      "5\$"
-test_mincc "int main() { put_int(2 | 1); return 0; }"      "3\$"
-test_mincc "int main() { put_int(3 | 6); return 0; }"      "7\$"
-test_mincc "int main() { put_int(0&1 ^ 1&1); return 0; }"  "1\$"
-test_mincc "int main() { put_int(0&1 ^ 1&0); return 0; }"  "0\$"
-test_mincc "int main() { put_int(1&1 ^ 1&1); return 0; }"  "0\$"
-test_mincc "int main() { put_int(0^1 | 1^1); return 0; }"  "1\$"
-test_mincc "int main() { put_int(0^1 | 1^0); return 0; }"  "1\$"
-test_mincc "int main() { put_int(1^1 | 1^1); return 0; }"  "0\$"
-test_mincc "int main() { put_int(0&1 | 1&1); return 0; }"  "1\$"
-test_mincc "int main() { put_int(0&1 | 1&0); return 0; }"  "0\$"
-test_mincc "int main() { put_int(1&1 | 1&1); return 0; }"  "1\$"
-test_mincc "int main() { put_int(~2 & 7); return 0; }"     "5\$"
-
-test_mincc "int main() { put_int(12 == 12); return 0; }"         "1\$"
-test_mincc "int main() { put_int(12 == 19); return 0; }"         "0\$"
-test_mincc "int main() { put_int(12 != 12); return 0; }"         "0\$"
-test_mincc "int main() { put_int(12 != 19); return 0; }"         "1\$"
-test_mincc "int main() { put_int(1 == 1 && 2 == 2); return 0; }" "1\$"
-test_mincc "int main() { put_int(1 != 1 && 2 == 2); return 0; }" "0\$"
-test_mincc "int main() { put_int(1 == 1 && 2 != 2); return 0; }" "0\$"
-test_mincc "int main() { put_int(1 != 1 && 2 != 2); return 0; }" "0\$"
-test_mincc "int main() { put_int(1 == 1 || 2 == 2); return 0; }" "1\$"
-test_mincc "int main() { put_int(1 != 1 || 2 == 2); return 0; }" "1\$"
-test_mincc "int main() { put_int(1 == 1 || 2 != 2); return 0; }" "1\$"
-test_mincc "int main() { put_int(1 != 1 || 2 != 2); return 0; }" "0\$"
-test_mincc "int main() { put_int(!0); return 0; }"               "1\$"
-test_mincc "int main() { put_int(!1); return 0; }"               "0\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(0);  return 0; }"   "0\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(42); return 0; }"  "42\$"
 
 test_mincc "
+int put_int(int x);
+int main() { put_int(1-6-10); return 0; }"          "-15\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(2+110-92); return 0; }"         "20\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(1000-990+121+92); return 0; }" "223\$"
+
+test_mincc "
+int put_int(int x);
+int main() { put_int(1*2 + 5*8); return 0; }"     "42\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(5*6 - 10/2); return 0; }"    "25\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(100/3/3); return 0; }"       "11\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(100%7 + 22%6 ) ; return 0; }" "6\$"
+
+test_mincc "
+int put_int(int x);
+int main() { put_int((1+2) * 3); return 0; }"              "9\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int((6-3+1) * (9-6+7-2)); return 0; }"   "32\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int((4*1) * (4/3) ); return 0; }"         "4\$"
+
+test_mincc "
+int put_int(int x);
+int main() { put_int(+ 1+6 ); return 0; }"       "7\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(-5+7*5); return 0; }"      "30\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(+5 + -5); return 0; }"      "0\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(+10 + (-8)); return 0; }"   "2\$"
+
+test_mincc "
+int put_int(int x);
+int main() { put_int(1 << 3); return 0; }"          "8\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(10 + (-1 <<2)); return 0; }"   "6\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(9 >> 1); return 0; }"          "4\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(23 + 7*(-6 >>1)); return 0; }" "2\$"
+
+test_mincc "
+int put_int(int x);
+int main() { put_int(0 == -1); return 0; }"    "0\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(0 == 0); return 0; }"     "1\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(0 == 1); return 0; }"     "0\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(0 != -1); return 0; }"    "1\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(0 != 0); return 0; }"     "0\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(0 != 1); return 0; }"     "1\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(0 < -1); return 0; }"     "0\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(0 < 0); return 0; }"      "0\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(0 < 1); return 0; }"      "1\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(0 > -1); return 0; }"     "1\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(0 > 0); return 0; }"      "0\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(0 > 1); return 0; }"      "0\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(0<=-1); return 0; }"      "0\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(0<= 0); return 0; }"      "1\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(0<= 1); return 0; }"      "1\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(0>=-1); return 0; }"      "1\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(0>= 0); return 0; }"      "1\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(0>= 1); return 0; }"      "0\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(0<1 == 1<2); return 0; }" "1\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(0<1 == 1>2); return 0; }" "0\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(0<1 != 1<2); return 0; }" "0\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(0<1 != 1>2); return 0; }" "1\$"
+
+test_mincc "
+int put_int(int x);
+int main() { put_int(2 & 1); return 0; }"      "0\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(3 & 6); return 0; }"      "2\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(2 ^ 1); return 0; }"      "3\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(3 ^ 6); return 0; }"      "5\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(2 | 1); return 0; }"      "3\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(3 | 6); return 0; }"      "7\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(0&1 ^ 1&1); return 0; }"  "1\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(0&1 ^ 1&0); return 0; }"  "0\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(1&1 ^ 1&1); return 0; }"  "0\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(0^1 | 1^1); return 0; }"  "1\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(0^1 | 1^0); return 0; }"  "1\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(1^1 | 1^1); return 0; }"  "0\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(0&1 | 1&1); return 0; }"  "1\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(0&1 | 1&0); return 0; }"  "0\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(1&1 | 1&1); return 0; }"  "1\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(~2 & 7); return 0; }"     "5\$"
+
+test_mincc "
+int put_int(int x);
+int main() { put_int(12 == 12); return 0; }"         "1\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(12 == 19); return 0; }"         "0\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(12 != 12); return 0; }"         "0\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(12 != 19); return 0; }"         "1\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(1 == 1 && 2 == 2); return 0; }" "1\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(1 != 1 && 2 == 2); return 0; }" "0\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(1 == 1 && 2 != 2); return 0; }" "0\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(1 != 1 && 2 != 2); return 0; }" "0\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(1 == 1 || 2 == 2); return 0; }" "1\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(1 != 1 || 2 == 2); return 0; }" "1\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(1 == 1 || 2 != 2); return 0; }" "1\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(1 != 1 || 2 != 2); return 0; }" "0\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(!0); return 0; }"               "1\$"
+test_mincc "
+int put_int(int x);
+int main() { put_int(!1); return 0; }"               "0\$"
+
+test_mincc "
+int put_int(int x);
 int main() {
     int x = 3;
     put_int(x + 1);
     return 0;
 }"                            "4\$"
 test_mincc "
+int put_int(int x);
 int main() {
     int tmp =  2+110-94;
     put_int(tmp*2);
     return 0;
 }"                           "36\$"
 test_mincc "
+int put_int(int x);
 int main() {
     int a, b, c = 6;
     a = 5;b = 2;
@@ -143,6 +290,7 @@ int main() {
     return 0;
 }"                           "44\$"
 test_mincc "
+int put_int(int x);
 int main() {
     int a = 5, b, c;
     b = 12; c=13;
@@ -150,6 +298,7 @@ int main() {
     return 0;
 }"                            "1\$"
 test_mincc "
+int put_int(int x);
 int main() {
     int x = 1, y = 3;
     x = x + y; y = x + y;
@@ -158,6 +307,7 @@ int main() {
 }"                           "28\$"
 
 test_mincc "
+int put_int(int x);
 int main() {
     int x;
     ; x = 1;;
@@ -165,6 +315,7 @@ int main() {
     return 0;
 }"                            "2\$"
 test_mincc "
+int put_int(int x);
 int main() {
     int x = 2;
     x = 1;
@@ -175,6 +326,7 @@ int main() {
 }"                            "4\$"
 
 test_mincc "
+int put_int(int x);
 int main() {
     int x = 10;
     put_int(*&x);
@@ -182,6 +334,7 @@ int main() {
 }"                            "10\$"
 
 test_mincc "
+int put_int(int x);
 int main() {
     int x = 0;
     int *y = &x;
@@ -191,6 +344,7 @@ int main() {
 }"                            "3\$"
 
 test_mincc "
+int put_int(int x);
 int main() {
     int x = 6;
     int y = 15;
@@ -201,6 +355,7 @@ int main() {
 }"                            "15\$6\$1\$"
 
 test_mincc "
+int put_int(int x);
 int main() {
     int a[5];
     *a = 1;
@@ -218,6 +373,9 @@ int main() {
 }"                            "1\$-3\$-2\$7\$10\$"
 
 test_mincc "
+int put_int(int x);
+int one();
+int five();
 int main() {
     int x, y;
     x = five(); y = one();
@@ -225,18 +383,24 @@ int main() {
     return 0;
 }"                            "6\$"
 test_mincc "
+int put_int(int x);
+int five();
 int main() {
     int x = five();;
     put_int(x+five());
     return 0;
 }"                           "10\$"
 test_mincc "
+int put_int(int x);
+int sum(int a, int b, int c, int d, int e, int f);
 int main() {
     int x = 6, y = -3, z = 4;
     put_int(sum(x, y, z, x, -y, -z));
     return 0;
 }"                           "12\$"
 test_mincc "
+int put_int(int x);
+int square(int n);
 int main() {
     int x = 6, y = 2;
     put_int(square(x*y));
@@ -244,6 +408,7 @@ int main() {
 }"                          "144\$"
 
 test_mincc "
+int put_int(int x);
 int main() {
     int x = 0, y = 3;
     if (x == 0) y = 2*y;
@@ -251,6 +416,7 @@ int main() {
     return 0;
 }"                            "6\$"
 test_mincc "
+int put_int(int x);
 int main() {
     int x = 1, y = 3;
     if (x == 0) y = 2*y;
@@ -258,6 +424,7 @@ int main() {
     return 0;
 }"                            "3\$"
 test_mincc "
+int put_int(int x);
 int main() {
     int x = 1, y = 3;
     if (x == 0) y = 2*y;
@@ -267,6 +434,7 @@ int main() {
 }"                            "1\$"
 
 test_mincc "
+int put_int(int x);
 int main() {
     int x = 0;
     if (x < 10)       put_int(1);
@@ -275,6 +443,7 @@ int main() {
     return 0;
 }"                            "1\$"
 test_mincc "
+int put_int(int x);
 int main() {
     int x = 9;
     if (x < 10)       put_int(1);
@@ -283,6 +452,7 @@ int main() {
     return 0;
 }"                            "1\$"
 test_mincc "
+int put_int(int x);
 int main() {
     int x = 10;
     if (x < 10)       put_int(1);
@@ -291,6 +461,7 @@ int main() {
     return 0;
 }"                            "2\$"
 test_mincc "
+int put_int(int x);
 int main() {
     int x = 99;
     if (x < 10)       put_int(1);
@@ -299,6 +470,7 @@ int main() {
     return 0;
 }"                            "2\$"
 test_mincc "
+int put_int(int x);
 int main() {
     int x = 100;
     if (x < 10)       put_int(1);
@@ -307,6 +479,7 @@ int main() {
     return 0;
 }"                            "3\$"
 test_mincc "
+int put_int(int x);
 int main() {
     int x = 379;
     if (x < 10)       put_int(1);
@@ -316,6 +489,7 @@ int main() {
 }"                            "3\$"
 
 test_mincc "
+int put_int(int x);
 int main() {
     int x = 3;
     while (x < 50) x = put_int(x*x);
@@ -323,6 +497,7 @@ int main() {
     return 0;
 }"                    "9\$81\$82\$"
 test_mincc "
+int put_int(int x);
 int main() {
     int x = 2;
     while (x <  1) x = put_int(x*x);
@@ -330,6 +505,7 @@ int main() {
     return 0;
 }"                            "3\$"
 test_mincc "
+int put_int(int x);
 int main() {
     int x = 3;
     do x = put_int(x*x); while (x < 50);
@@ -337,6 +513,7 @@ int main() {
     return 0;
 }"                    "9\$81\$82\$"
 test_mincc "
+int put_int(int x);
 int main() {
     int x = 2;
     do x = put_int(x*x); while (x <  1);
@@ -345,6 +522,7 @@ int main() {
 }"                         "4\$5\$"
 
 test_mincc "
+int put_int(int x);
 int main() {
     int sum = 0, n = 5;
     for (n=1; n<=10; n = n+1)
@@ -353,6 +531,7 @@ int main() {
     return 0;
 }"                           "55\$"
 test_mincc "
+int put_int(int x);
 int main() {
     int sum = 0, n = 1;
     for (; n <= 10; n = n+1)
@@ -361,6 +540,7 @@ int main() {
     return 0;
 }"                           "55\$"
 test_mincc "
+int put_int(int x);
 int main() {
     int n = 1;
     for (;n <= 10;) n = n + 1;
@@ -368,6 +548,7 @@ int main() {
     return 0;
 }"                           "22\$"
 test_mincc "
+int put_int(int x);
 int main() {
     int ret = 0, i, j;
     i = 0; j = 2;
@@ -378,6 +559,7 @@ int main() {
     return 0;
 }"                           "32\$"
 test_mincc "
+int put_int(int x);
 int main() {
     int sum = 0, n = 1;
     while (n <= 8) {
@@ -389,6 +571,7 @@ int main() {
 }"                          "204\$"
 
 test_mincc "
+int put_int(int x);
 int main() {
     int a[6];
     int i = 0;
@@ -402,6 +585,8 @@ int main() {
 }"                          "0\$1\$3\$6\$10\$15\$"
 
 test_mincc "
+int put_int(int x);
+int five();
 int six() { return 6; }
 int main() {
     int x; 
@@ -411,6 +596,7 @@ int main() {
 }"                           "19\$"
 
 test_mincc "
+int put_int(int x);
 int incr(int x) { return x + 1; }
 int main() {
     int x; 
@@ -421,6 +607,8 @@ int main() {
 }"                           "-4\$-6\$"
 
 test_mincc "
+int put_int(int x);
+
 int incr(int* x) {
     *x = *x + 1;
     return *x;
@@ -435,6 +623,8 @@ int main() {
 }"                           "5\$5\$"
 
 test_mincc "
+int put_int(int x);
+
 int fib(int n) {
     if (n <= 0)           return 0;
     if (n == 1 || n == 2) return 1;
@@ -447,28 +637,26 @@ int main() {
 }"                            "89\$"
 
 test_mincc "
-int fib(int n, int* a) {
-    if (a[n] != -1)       return a[n];
-    if (n == 0)           return a[n] = 0;
-    if (n == 1 || n == 2) return a[n] = 1;
-    return a[n] = fib(n-1, a) + fib(n-2, a);
-}
+int put_int(int x);
+int fib(int n, int a[46]);
 
 int main() {
     int i, a[46];
     for (i = 0; i <= 45; i = i + 1) a[i] = -1;
     put_int(fib(45, a));
     return 0;
+}
+
+int fib(int n, int a[46]) {
+    if (a[n] != -1)       return a[n];
+    if (n == 0)           return a[n] = 0;
+    if (n == 1 || n == 2) return a[n] = 1;
+    return a[n] = fib(n-1, a) + fib(n-2, a);
 }"                            "1134903170\$"
 
 test_mincc "
-int sq_array(int a[6]) {
-    int i;
-    for (i = 0; i < 6; i = i + 1) {
-        a[i] = i*i;
-    }
-    return a[5];
-}
+int put_int(int x);
+int sq_array(int *a);
 
 int main() {
     int a[6];
@@ -479,9 +667,25 @@ int main() {
         put_int(a[i]);
     }
     return 0;
+}
+
+int sq_array(int a[6]) {
+    int i;
+    for (i = 0; i < 6; i = i + 1) {
+        a[i] = i*i;
+    }
+    return a[5];
 }"                            "0\$1\$4\$9\$16\$25\$"
 
 test_mincc "
+int put_int(int x);
+int add(int x, int y), sub(int x, int y);
+int calc(int x1, int x2, int x3, int x4, int x5, int x6);
+
+int main() {
+    put_int(calc(4, 2, 9, -2, -1, 13));
+    return 0;
+}
 int add(int x, int y) {
     return x + y;
 }
@@ -492,14 +696,11 @@ int sub(int x, int y) {
 
 int calc(int x1, int x2, int x3, int x4, int x5, int x6) {
     return sub(add(x1, x2*x3), add(x4, x5+x6));
-}
-
-int main() {
-    put_int(calc(4, 2, 9, -2, -1, 13));
-    return 0;
 }"                           "12\$"
 
 test_mincc "
+int put_int(int x);
+
 int main() {
     int x = 1, y = 5;
     put_int(x);

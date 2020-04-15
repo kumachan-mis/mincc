@@ -5,8 +5,7 @@
 #include "../parser/ast.h"
 
 
-Ast* cast_array_to_ptr(Ast* ast);
-void cast_inline_array_to_ptr(Ast* ast);
-
+void cast_inplace_array_to_ptr(Ast* ast);
+void cast_inplace_function_declaration(Ast* ast);
 
 #endif  // _CAST_H_

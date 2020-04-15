@@ -30,7 +30,7 @@ CType* ctype_new_array(CType* array_of, int len) {
 }
 
 CType* ctype_new_func(CType* return_type, Vector* param_types) {
-    CType* ctype = ctype_new(CTYPE_FUNC, 8);
+    CType* ctype = ctype_new(CTYPE_FUNC, 0);
     ctype->func = (CFuncType*)safe_malloc(sizeof(CFuncType));
     ctype->func->return_type = return_type;
     ctype->func->param_types = param_types;

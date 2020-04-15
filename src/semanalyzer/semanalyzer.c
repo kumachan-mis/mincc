@@ -30,10 +30,13 @@ void analyze_jump_stmt_semantics(Ast* ast, SymbolTable* symbol_table);
 void analyze_stmt_semantics(Ast* ast, SymbolTable* symbol_table);
 
 // declaration-semantics-analyzer
-void analyze_declaration_list_semantics(Ast* ast, SymbolTable* symbol_table);
-void analyze_declaration_semantics(Ast* ast, SymbolTable* symbol_table);
+void analyze_global_declaration_list_semantics(Ast* ast, SymbolTable* symbol_table);
+void analyze_global_declaration_semantics(Ast* ast, SymbolTable* symbol_table);
+void analyze_local_declaration_list_semantics(Ast* ast, SymbolTable* symbol_table);
+void analyze_local_declaration_semantics(Ast* ast, SymbolTable* symbol_table);
 
-// external-definition-semantics-analyzer
+// external-declaration-semantics-analyzer
+void analyze_external_declaration_semantics(Ast* ast, SymbolTable* symbol_table);
 void analyze_function_definition_semantics(Ast* ast, SymbolTable* symbol_table);
 
 // assertion
@@ -41,13 +44,13 @@ void assert_semantics(int condition);
 
 
 void analyze_semantics(AstList* astlist) {
-    SymbolTable* gloval_table = symbol_table_new();
-    astlist->symbol_table = gloval_table;
+    SymbolTable* global_table = symbol_table_new(NULL);
+    astlist->symbol_table = global_table;
     while (1) {
         Ast* ast = astlist_top(astlist);
         if (ast == NULL) break;
 
-        analyze_function_definition_semantics(ast, gloval_table);
+        analyze_external_declaration_semantics(ast, global_table);
         astlist_pop(astlist);
     }
     astlist->pos = 0;
@@ -64,7 +67,7 @@ void analyze_primary_expr_semantics(Ast* ast, SymbolTable* symbol_table) {
         case AST_IDENT:
             ctype = symbol_table_get_ctype(symbol_table, ast->value_ident);
             ast->ctype = ctype_copy(ctype);
-            cast_inline_array_to_ptr(ast);
+            cast_inplace_array_to_ptr(ast);
             break;
         default:
             assert_semantics(0);
@@ -82,15 +85,13 @@ void analyze_postfix_expr_semantics(Ast* ast, SymbolTable* symbol_table) {
             assert_semantics(lhs->type == AST_IDENT);
 
             ctype = symbol_table_get_function_ctype(symbol_table, lhs->value_ident);
-            // assert_semantics(rhs->children->size == ctype->func->param_types->size);
-            // TODO: function declaration
+            assert_semantics(rhs->children->size == ctype->func->param_types->size);
             size_t i = 0, num_args = rhs->children->size;
             for (i = 0; i < num_args; i++) {
                 Ast* param = ast_nth_child(rhs, i);
-                // CType* param_ctype = vector_at(ctype->func->param_types, i);
+                CType* param_ctype = vector_at(ctype->func->param_types, i);
                 analyze_expr_semantics(param, symbol_table);
-                // assert_semantics(ctype_equals(param->ctype, param_ctype));
-                // TODO: function declaration
+                assert_semantics(ctype_equals(param->ctype, param_ctype));
             }
             ast->ctype = ctype_copy(ctype->func->return_type);
             break;
@@ -269,7 +270,7 @@ void analyze_expr_semantics(Ast* ast, SymbolTable* symbol_table) {
 void analyze_null_expr_semantics(Ast* ast, SymbolTable* symbol_table) {
     switch (ast->type) {
         case AST_NULL:
-            /* Do Nothing */
+            // Do Nothing
             break;
         default:
             assert_semantics(0);
@@ -278,21 +279,18 @@ void analyze_null_expr_semantics(Ast* ast, SymbolTable* symbol_table) {
 
 // statement-semantics-analyzer
 void analyze_compound_stmt_semantics(Ast* ast, SymbolTable* symbol_table) {
-    SymbolTable* block_table = symbol_table_new();
-    symbol_table_enter_into_scope(block_table, symbol_table);
+    SymbolTable* block_table = symbol_table_new(symbol_table);
     ast->symbol_table = block_table;
 
     size_t i = 0, size = ast->children->size;
     for (i = 0; i < size; i++) {
         Ast* child = ast_nth_child(ast, i);
         if (is_declaration_list(child->type)) {
-            analyze_declaration_list_semantics(child, block_table);
+            analyze_local_declaration_list_semantics(child, block_table);
         } else {
             analyze_stmt_semantics(child, block_table);
         }
     }
-
-    symbol_table_exit_from_scope(block_table, symbol_table);
 }
 
 void analyze_expr_stmt_semantics(Ast* ast, SymbolTable* symbol_table) {
@@ -364,92 +362,113 @@ void analyze_stmt_semantics(Ast* ast, SymbolTable* symbol_table) {
 }
 
 // declaration-semantics-analyzer
-void analyze_declaration_list_semantics(Ast* ast, SymbolTable* symbol_table) {
+void analyze_global_declaration_list_semantics(Ast* ast, SymbolTable* symbol_table) {
     size_t i = 0, size = ast->children->size;
     for (i = 0; i < size; i++) {
-        analyze_declaration_semantics(ast_nth_child(ast, i), symbol_table);
+        analyze_global_declaration_semantics(ast_nth_child(ast, i), symbol_table);
     }
 }
 
-void analyze_declaration_semantics(Ast* ast, SymbolTable* symbol_table) {
-    Ast* lhs = ast_nth_child(ast, 0);
-    Ast* rhs = NULL;
+void analyze_global_declaration_semantics(Ast* ast, SymbolTable* symbol_table) {
+    Ast* ident = ast_nth_child(ast, 0);
+    // Ast* init = NULL;
+    SymbolStatus status = SYMBOL_DECL;
 
-    symbol_table_insert(symbol_table, str_new(lhs->value_ident), ctype_copy(lhs->ctype));
     switch(ast->type) {
         case AST_IDENT_DECL:
-            if (ast->children->size == 1) break;
-            rhs = ast_nth_child(ast, 1);
-            analyze_expr_semantics(rhs, symbol_table);
-            assert_semantics(ctype_equals(lhs->ctype, rhs->ctype));
+            assert_semantics(0);
+            // TODO: global variables
             break;
         case AST_ARRAY_DECL:
-            if (ast->children->size == 1) break;
-            // TODO: initializer of arrays
+            assert_semantics(0);
+            // TODO: global arrays
             break;
         case AST_FUNC_DECL:
+            status = SYMBOL_DECL;
+            cast_inplace_function_declaration(ast);
             break;
         default:
             assert_semantics(0);
     }
+
+    symbol_table_insert_copy(symbol_table, ident->value_ident, ident->ctype, status);
 }
 
-// external-definition-semantics-analyzer
+void analyze_local_declaration_list_semantics(Ast* ast, SymbolTable* symbol_table) {
+    size_t i = 0, size = ast->children->size;
+    for (i = 0; i < size; i++) {
+        analyze_local_declaration_semantics(ast_nth_child(ast, i), symbol_table);
+    }
+}
+
+void analyze_local_declaration_semantics(Ast* ast, SymbolTable* symbol_table) {
+    Ast* ident = ast_nth_child(ast, 0);
+    Ast* init = NULL;
+    SymbolStatus status = SYMBOL_DECL;
+
+    switch(ast->type) {
+        case AST_IDENT_DECL:
+            status = SYMBOL_DEF;
+            if (ast->children->size == 1) break;
+            init = ast_nth_child(ast, 1);
+            analyze_expr_semantics(init, symbol_table);
+            assert_semantics(ctype_equals(ident->ctype, init->ctype));
+            break;
+        case AST_ARRAY_DECL:
+            status = SYMBOL_DEF;
+            if (ast->children->size == 1) break;
+            // TODO: initializer of arrays
+            break;
+        case AST_FUNC_DECL:
+            status = SYMBOL_DECL;
+            cast_inplace_function_declaration(ast);
+            break;
+        default:
+            assert_semantics(0);
+    }
+
+    symbol_table_insert_copy(symbol_table, ident->value_ident, ident->ctype, status);
+}
+
+// external-declaration-semantics-analyzer
+void analyze_external_declaration_semantics(Ast* ast, SymbolTable* symbol_table) {
+    if (is_declaration_list(ast->type)) {
+        analyze_global_declaration_list_semantics(ast, symbol_table);
+    } else if (ast->type == AST_FUNC_DEF) {
+        analyze_function_definition_semantics(ast, symbol_table);
+    } else {
+        assert_semantics(0);
+    }
+}
+
 void analyze_function_definition_semantics(Ast* ast, SymbolTable* symbol_table) {
-    Ast* function_decl = ast_nth_child(ast, 0);
-    Ast* function_ident = ast_nth_child(function_decl, 0);
-    Ast* param_list = ast_nth_child(function_decl, 1);
+    Ast* func_decl = ast_nth_child(ast, 0);
+    Ast* param_list = ast_nth_child(func_decl, 1);
     Ast* block = ast_nth_child(ast, 1);
 
-    symbol_table_insert(
-        symbol_table,
-        str_new(function_ident->value_ident),
-        ctype_copy(function_ident->ctype)
-    );
+    cast_inplace_function_declaration(func_decl);
 
-    SymbolTable* function_table = symbol_table_new();
-    symbol_table_enter_into_scope(function_table, symbol_table);
+    Ast* func_ident = ast_nth_child(func_decl, 0);
+    symbol_table_insert_copy(symbol_table, func_ident->value_ident, func_ident->ctype, SYMBOL_DEF);
+
+    SymbolTable* func_table = symbol_table_new(symbol_table);
+    block->symbol_table = func_table;
 
     size_t i = 0, size = param_list->children->size;
     for (i = 0; i < size; i++) {
-        Ast* param_decl = ast_nth_child(param_list, i);
-        Ast* param_ident = ast_nth_child(param_decl, 0);
-
-        switch (param_decl->type) {
-            case AST_IDENT_DECL:
-                symbol_table_insert(
-                    function_table,
-                    str_new(param_ident->value_ident),
-                    ctype_copy(param_ident->ctype)
-                );
-                break;
-            case AST_ARRAY_DECL:
-                symbol_table_insert(
-                    function_table,
-                    str_new(param_ident->value_ident),
-                    ctype_new_ptr(ctype_copy(param_ident->ctype->array_of))
-                );
-                break;
-            case AST_FUNC_DECL:
-                assert_semantics(0);
-                // TODO: function as a param
-            default:
-                assert_semantics(0);
-        }
+        Ast* param_ident = ast_nth_child(ast_nth_child(param_list, i), 0);
+        symbol_table_insert_copy(func_table, param_ident->value_ident, param_ident->ctype, SYMBOL_DEF);
     }
-    block->symbol_table = function_table;
 
     i = 0, size = block->children->size;
     for (i = 0; i < size; i++) {
         Ast* child = ast_nth_child(block, i);
         if (is_declaration_list(child->type)) {
-            analyze_declaration_list_semantics(child, function_table);
+            analyze_local_declaration_list_semantics(child, func_table);
         } else {
-            analyze_stmt_semantics(child, function_table);
+            analyze_stmt_semantics(child, func_table);
         }
     }
-
-    symbol_table_exit_from_scope(function_table, symbol_table);
 }
 
 // assertion
