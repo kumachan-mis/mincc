@@ -41,7 +41,7 @@ Ast* parse_param_list(TokenList* tokenlist);
 Ast* parse_param_declaration(TokenList* tokenlist);
 
 // external-declaration-parser
-Ast* parse_function_definition(TokenList* tokenlist);
+Ast* parse_external_declaration(TokenList* tokenlist);
 
 // assertion
 Token* assert_and_top_token(TokenList* tokenlist, TokenType expected_type);
@@ -55,7 +55,7 @@ AstList* parse(TokenList* tokenlist) {
     while (1) {
         Token* token = tokenlist_top(tokenlist);
         if (token->type == TOKEN_EOF) break;
-        Ast* ast = parse_function_definition(tokenlist);
+        Ast* ast = parse_external_declaration(tokenlist);
         vector_push_back(inner_vector, ast);
     }
     tokenlist->pos = 0;
@@ -534,7 +534,10 @@ Ast* parse_declaration(TokenList* tokenlist) {
 
     while (1) {
         Token* token = tokenlist_top(tokenlist);
-        if (token->type == TOKEN_SEMICOLON) break;
+        if (token->type == TOKEN_SEMICOLON) {
+            tokenlist_pop(tokenlist);
+            break;
+        }
         assert_and_pop_token(tokenlist, TOKEN_COMMA);
 
         child = parse_init_declarator(tokenlist, ctype_copy(basic_ctype));
@@ -575,6 +578,7 @@ Ast* parse_init_declarator(TokenList* tokenlist, CType* basic_ctype) {
             // TODO: initializer of arrays
             break;
         case AST_FUNC_DECL:
+            // Do Nothing
             break;
         default:
             assert_syntax(0);
@@ -663,12 +667,17 @@ Ast* parse_param_declaration(TokenList* tokenlist) {
 }
 
 // external-declaration-parser
-Ast* parse_function_definition(TokenList* tokenlist) {
+Ast* parse_external_declaration(TokenList* tokenlist) {
+    int pos_memo = tokenlist->pos;
     CType* ctype = parse_type_specifier(tokenlist);
-    Ast* decl = parse_declarator(tokenlist, ctype);
-    assert_syntax(decl->type == AST_FUNC_DECL);
-    Ast* ast = ast_new(AST_FUNC_DEF, 2, decl, parse_compound_stmt(tokenlist));   
-    return ast;
+    Ast* ast = parse_declarator(tokenlist, ctype);
+
+    Token* token = tokenlist_top(tokenlist);
+    if (ast->type == AST_FUNC_DECL && token->type == TOKEN_LBRACE) {
+        return ast_new(AST_FUNC_DEF, 2, ast, parse_compound_stmt(tokenlist));
+    }
+    tokenlist->pos = pos_memo;
+    return parse_declaration(tokenlist);
 }
 
 // assertion
