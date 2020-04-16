@@ -13,6 +13,10 @@ CType* ctype_new(BasicCType basic_ctype, int size) {
     return ctype;
 }
 
+CType* ctype_new_char() {
+    return ctype_new(CTYPE_CHAR, 1);
+}
+
 CType* ctype_new_int() {
     return ctype_new(CTYPE_INT, 8);
 }

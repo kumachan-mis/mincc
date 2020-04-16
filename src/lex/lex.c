@@ -53,6 +53,8 @@ Token* read_token(
     char c = fbuffer_top(fbuffer);
     if (isalpha(c) || c == '_') {
         return read_token_keyword_or_ident(fbuffer, keyword_list);
+    } else if (c == '\'') {
+        return read_token_char(fbuffer);
     } else if (isdigit(c)) {
         return read_token_int(fbuffer);
     } else {
@@ -68,6 +70,15 @@ Token* read_token_keyword_or_ident(FileBuffer* fbuffer, ReservedTokenList* keywo
         if (strcmp(value_ident, entry->value_token) == 0) return token_new(entry->type);
     }
     return token_new_ident(TOKEN_IDENT, value_ident);
+}
+
+Token* read_token_char(FileBuffer* fbuffer) {
+    // character constant has type int
+   assert_and_pop_char(fbuffer, '\'');
+   int value_int = fbuffer_top(fbuffer);
+   fbuffer_pop(fbuffer);
+   assert_and_pop_char(fbuffer, '\'');
+   return token_new_int(TOKEN_IMM_INT, value_int);
 }
 
 Token* read_token_int(FileBuffer* fbuffer) {

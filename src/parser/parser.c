@@ -385,8 +385,11 @@ Ast* parse_compound_stmt(TokenList* tokenlist) {
             tokenlist_pop(tokenlist);
             break;
         }
-        if (token->type == TOKEN_INT) ast_append_child(ast, parse_declaration(tokenlist));
-        else                          ast_append_child(ast, parse_stmt(tokenlist));
+        if (token->type == TOKEN_CHAR || token->type == TOKEN_INT) {
+            ast_append_child(ast, parse_declaration(tokenlist));
+        }else {
+            ast_append_child(ast, parse_stmt(tokenlist));
+        }
     }
     return ast;
 }
@@ -552,10 +555,13 @@ CType* parse_type_specifier(TokenList* tokenlist) {
     CType* ctype = NULL;
 
     Token* token = tokenlist_top(tokenlist);
+    tokenlist_pop(tokenlist);
     switch (token->type) {
         case TOKEN_INT:
-            tokenlist_pop(tokenlist);
             ctype = ctype_new_int();
+            break;
+        case TOKEN_CHAR:
+            ctype = ctype_new_char();
             break;
         default:
             assert_syntax(0);
