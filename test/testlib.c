@@ -19,3 +19,13 @@ int put_int(int x) {
     printf("%d\n", x);
     return x;
 }
+
+int put_char(char x) {
+    printf("%c\n", x);
+    return x;
+}
+
+char* put_str(char* x) {
+    printf("%s\n", x);
+    return x;
+}

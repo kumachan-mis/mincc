@@ -625,7 +625,7 @@ Ast* parse_direct_declarator(TokenList* tokenlist, CType* ctype) {
             assert_and_pop_token(tokenlist, TOKEN_RBRACKET);
             break;
         case TOKEN_LPAREN: {
-            assert_syntax(ctype->basic_ctype == CTYPE_INT || ctype->basic_ctype == CTYPE_PTR);
+            assert_syntax(ctype->basic_ctype != CTYPE_ARRAY);
             tokenlist_pop(tokenlist);
             Ast* param_list = parse_param_list(tokenlist);
             assert_and_pop_token(tokenlist, TOKEN_RPAREN);

@@ -45,6 +45,7 @@ CType* ctype_copy(CType* ctype) {
     if (ctype == NULL) return NULL;
     CType* copied_ctype = ctype_new(ctype->basic_ctype, ctype->size);
     switch (copied_ctype->basic_ctype) {
+        case CTYPE_CHAR:
         case CTYPE_INT:
             break;
         case CTYPE_PTR:
@@ -79,6 +80,7 @@ int ctype_equals(CType* ctype_x, CType* ctype_y) {
         return 0;
     }
     switch (ctype_x->basic_ctype) {
+        case CTYPE_CHAR:
         case CTYPE_INT:
             return 1;
         case CTYPE_PTR:
@@ -110,9 +112,15 @@ int ctype_equals(CType* ctype_x, CType* ctype_y) {
     }
 }
 
+int ctype_compatible(CType* ctype_x, CType* ctype_y) {
+    return (ctype_is_integer_ctype(ctype_x)   && ctype_is_integer_ctype(ctype_y))  ||
+           (ctype_x->basic_ctype == CTYPE_PTR && ctype_x->basic_ctype == CTYPE_PTR);
+}
+
 void ctype_delete(CType* ctype) {
     if (ctype == NULL) return;
     switch (ctype->basic_ctype) {
+        case CTYPE_CHAR:
         case CTYPE_INT:
             break;
         case CTYPE_PTR:
@@ -137,4 +145,10 @@ void ctype_delete(CType* ctype) {
         }
     }
     free(ctype);
+}
+
+// ctype-classifier
+int ctype_is_integer_ctype(CType* ctype) {
+    BasicCType basic_ctype = ctype->basic_ctype;
+    return basic_ctype == CTYPE_INT || basic_ctype == CTYPE_CHAR;
 }

@@ -67,7 +67,7 @@ void analyze_primary_expr_semantics(Ast* ast, SymbolTable* symbol_table) {
         case AST_IDENT:
             ctype = symbol_table_get_ctype(symbol_table, ast->value_ident);
             ast->ctype = ctype_copy(ctype);
-            cast_inplace_array_to_ptr(ast);
+            apply_inplace_array_to_ptr_conversion(ast);
             break;
         default:
             assert_semantics(0);
@@ -91,7 +91,7 @@ void analyze_postfix_expr_semantics(Ast* ast, SymbolTable* symbol_table) {
                 Ast* param = ast_nth_child(rhs, i);
                 CType* param_ctype = vector_at(ctype->func->param_types, i);
                 analyze_expr_semantics(param, symbol_table);
-                assert_semantics(ctype_equals(param->ctype, param_ctype));
+                assert_semantics(ctype_compatible(param->ctype, param_ctype));
             }
             ast->ctype = ctype_copy(ctype->func->return_type);
             break;
@@ -115,12 +115,14 @@ void analyze_unary_expr_semantics(Ast* ast, SymbolTable* symbol_table) {
             break;
         case AST_POSI:
         case AST_NEGA:
+            apply_inplace_integer_promotion(child);
             assert_semantics(child->ctype->basic_ctype == CTYPE_INT);
             ast->ctype = ctype_copy(child->ctype);
             break;
         case AST_NOT:
+            apply_inplace_integer_promotion(child);
             assert_semantics(child->ctype->basic_ctype == CTYPE_INT);
-            ast->ctype = ctype_new_int();
+            ast->ctype = ctype_copy(child->ctype);
             break;
         case AST_LNOT:
             assert_semantics(child->ctype->basic_ctype == CTYPE_INT);
@@ -136,6 +138,7 @@ void analyze_multiplicative_expr_semantics(Ast* ast, SymbolTable* symbol_table) 
     Ast* rhs = ast_nth_child(ast, 1);
     analyze_expr_semantics(lhs, symbol_table);
     analyze_expr_semantics(rhs, symbol_table);
+    apply_inplace_usual_arithmetic_conversion(ast);
     assert_semantics(lhs->ctype->basic_ctype == CTYPE_INT);
     assert_semantics(rhs->ctype->basic_ctype == CTYPE_INT);
     ast->ctype = ctype_new_int();
@@ -146,6 +149,7 @@ void analyze_additive_expr_semantics(Ast* ast, SymbolTable* symbol_table) {
     Ast* rhs = ast_nth_child(ast, 1);
     analyze_expr_semantics(lhs, symbol_table);
     analyze_expr_semantics(rhs, symbol_table);
+    apply_inplace_usual_arithmetic_conversion(ast);
     BasicCType lhs_basic_ctype = lhs->ctype->basic_ctype;
     BasicCType rhs_basic_ctype = rhs->ctype->basic_ctype;
 
@@ -199,6 +203,8 @@ void analyze_shift_expr_semantics(Ast* ast, SymbolTable* symbol_table) {
     Ast* rhs = ast_nth_child(ast, 1);
     analyze_expr_semantics(lhs, symbol_table);
     analyze_expr_semantics(rhs, symbol_table);
+    apply_inplace_integer_promotion(lhs);
+    apply_inplace_integer_promotion(rhs);
     assert_semantics(lhs->ctype->basic_ctype == CTYPE_INT);
     assert_semantics(rhs->ctype->basic_ctype == CTYPE_INT);
     ast->ctype = ctype_new_int();
@@ -209,6 +215,7 @@ void analyze_relational_expr_semantics(Ast* ast, SymbolTable* symbol_table) {
     Ast* rhs = ast_nth_child(ast, 1);
     analyze_expr_semantics(lhs, symbol_table);
     analyze_expr_semantics(rhs, symbol_table);
+    apply_inplace_usual_arithmetic_conversion(ast);
     assert_semantics(lhs->ctype->basic_ctype == CTYPE_INT);
     assert_semantics(rhs->ctype->basic_ctype == CTYPE_INT);
     // TODO: not only int
@@ -220,6 +227,7 @@ void analyze_equality_expr_semantics(Ast* ast, SymbolTable* symbol_table) {
     Ast* rhs = ast_nth_child(ast, 1);
     analyze_expr_semantics(lhs, symbol_table);
     analyze_expr_semantics(rhs, symbol_table);
+    apply_inplace_usual_arithmetic_conversion(ast);
     assert_semantics(lhs->ctype->basic_ctype == CTYPE_INT);
     assert_semantics(rhs->ctype->basic_ctype == CTYPE_INT);
     // TODO: not only int
@@ -231,12 +239,17 @@ void analyze_bitwise_expr_semantics(Ast* ast, SymbolTable* symbol_table) {
     Ast* rhs = ast_nth_child(ast, 1);
     analyze_expr_semantics(lhs, symbol_table);
     analyze_expr_semantics(rhs, symbol_table);
+    apply_inplace_usual_arithmetic_conversion(ast);
     assert_semantics(lhs->ctype->basic_ctype == CTYPE_INT);
     assert_semantics(rhs->ctype->basic_ctype == CTYPE_INT);
     ast->ctype = ctype_new_int();
 }
 
 void analyze_logical_expr_semantics(Ast* ast, SymbolTable* symbol_table) {
+    Ast* lhs = ast_nth_child(ast, 0);
+    Ast* rhs = ast_nth_child(ast, 1);
+    analyze_expr_semantics(lhs, symbol_table);
+    analyze_expr_semantics(rhs, symbol_table);
     ast->ctype = ctype_new_int();
 }
 
@@ -246,7 +259,7 @@ void analyze_assignment_expr_semantics(Ast* ast, SymbolTable* symbol_table) {
     assert_semantics(lhs->type == AST_IDENT || lhs->type == AST_DEREF);
     analyze_expr_semantics(lhs, symbol_table);
     analyze_expr_semantics(rhs, symbol_table);
-    assert_semantics(ctype_equals(lhs->ctype, rhs->ctype));
+    assert_semantics(ctype_compatible(lhs->ctype, rhs->ctype));
     ast->ctype = ctype_copy(lhs->ctype);
 }
 
@@ -385,7 +398,7 @@ void analyze_global_declaration_semantics(Ast* ast, SymbolTable* symbol_table) {
             break;
         case AST_FUNC_DECL:
             status = SYMBOL_DECL;
-            cast_inplace_function_declaration(ast);
+            apply_inplace_function_declaration_conversion(ast);
             break;
         default:
             assert_semantics(0);
@@ -412,7 +425,7 @@ void analyze_local_declaration_semantics(Ast* ast, SymbolTable* symbol_table) {
             if (ast->children->size == 1) break;
             init = ast_nth_child(ast, 1);
             analyze_expr_semantics(init, symbol_table);
-            assert_semantics(ctype_equals(ident->ctype, init->ctype));
+            assert_semantics(ctype_compatible(ident->ctype, init->ctype));
             break;
         case AST_ARRAY_DECL:
             status = SYMBOL_DEF;
@@ -421,7 +434,7 @@ void analyze_local_declaration_semantics(Ast* ast, SymbolTable* symbol_table) {
             break;
         case AST_FUNC_DECL:
             status = SYMBOL_DECL;
-            cast_inplace_function_declaration(ast);
+            apply_inplace_function_declaration_conversion(ast);
             break;
         default:
             assert_semantics(0);
@@ -446,7 +459,7 @@ void analyze_function_definition_semantics(Ast* ast, SymbolTable* symbol_table) 
     Ast* param_list = ast_nth_child(func_decl, 1);
     Ast* block = ast_nth_child(ast, 1);
 
-    cast_inplace_function_declaration(func_decl);
+    apply_inplace_function_declaration_conversion(func_decl);
 
     Ast* func_ident = ast_nth_child(func_decl, 0);
     symbol_table_insert_copy(symbol_table, func_ident->value_ident, func_ident->ctype, SYMBOL_DEF);
