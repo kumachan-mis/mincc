@@ -14,12 +14,16 @@ Token* read_token(
     ReservedTokenList* punct_list
 );
 Token* read_token_keyword_or_ident(FileBuffer* fbuffer, ReservedTokenList* keyword_list);
+Token* read_token_char(FileBuffer* fbuffer);
 Token* read_token_int(FileBuffer* fbuffer);
 Token* read_token_punct(FileBuffer* fbuffer, ReservedTokenList* punct_list);
 void skip_spaces(FileBuffer* fbuffer);
 char* read_value_ident(FileBuffer* fbuffer);
+int read_escape_sequence(FileBuffer* fbuffer);
 
 // assertion
+int assert_and_top_char(FileBuffer* fbuffer, int expected_char);
+void assert_and_pop_char(FileBuffer* fbuffer, int expected_char);
 void assert_lexicon(int condition);
 
 
@@ -53,6 +57,8 @@ Token* read_token(
     char c = fbuffer_top(fbuffer);
     if (isalpha(c) || c == '_') {
         return read_token_keyword_or_ident(fbuffer, keyword_list);
+    } else if (c == '\'') {
+        return read_token_char(fbuffer);
     } else if (isdigit(c)) {
         return read_token_int(fbuffer);
     } else {
@@ -68,6 +74,16 @@ Token* read_token_keyword_or_ident(FileBuffer* fbuffer, ReservedTokenList* keywo
         if (strcmp(value_ident, entry->value_token) == 0) return token_new(entry->type);
     }
     return token_new_ident(TOKEN_IDENT, value_ident);
+}
+
+Token* read_token_char(FileBuffer* fbuffer) {
+    // character constant has type int
+    assert_and_pop_char(fbuffer, '\'');
+    int value_int = fbuffer_top(fbuffer);
+    if (value_int != '\\') fbuffer_pop(fbuffer);
+    else                   value_int = read_escape_sequence(fbuffer);
+    assert_and_pop_char(fbuffer, '\'');
+    return token_new_int(TOKEN_IMM_INT, value_int);
 }
 
 Token* read_token_int(FileBuffer* fbuffer) {
@@ -128,7 +144,54 @@ char* read_value_ident(FileBuffer* fbuffer) {
     return value_ident;
 }
 
+int read_escape_sequence(FileBuffer* fbuffer) {
+    assert_and_pop_char(fbuffer, '\\');
+    int value_int = fbuffer_top(fbuffer);
+    fbuffer_pop(fbuffer);
+    switch (value_int) {
+        case '\'':
+            return '\'';
+        case '\"':
+            return '\"';
+        case '\?':
+            return '\?';
+        case '\\':
+            return '\\';
+        case 'a':
+            return '\a';
+        case 'b':
+            return '\b';
+        case 'f':
+            return '\f';
+        case 'n':
+            return '\n';
+        case 'r':
+            return '\r';
+        case 't':
+            return '\t';
+        case 'v':
+            return '\v';
+        case '0':
+            return '\0';
+        default:
+            assert_lexicon(0);
+            return '\0';
+    }
+}
+
 // assertion
+int assert_and_top_char(FileBuffer* fbuffer, int expected_char) {
+    char c = fbuffer_top(fbuffer);
+    assert_lexicon(c == expected_char);
+    return c;
+}
+
+void assert_and_pop_char(FileBuffer* fbuffer, int expected_char) {
+    char c = fbuffer_top(fbuffer);
+    assert_lexicon(c == expected_char);
+    fbuffer_pop(fbuffer);
+}
+
 void assert_lexicon(int condition) {
     if (condition) return;
     fprintf(stderr, "Error: fail to analyze lexicon\n");

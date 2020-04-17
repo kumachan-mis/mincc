@@ -7,7 +7,8 @@
 #include "../common/memory.h"
 
 
-static char* arg_register[] = { "rdi", "rsi", "rdx", "rcx", "r8", "r9" };
+static char* arg_register1[] = { "dil", "sil", "dl",  "cl",  "r8b", "r9b" };
+static char* arg_register8[] = { "rdi", "rsi", "rdx", "rcx", "r8",  "r9"  };
 
 
 // expression-code-generator
@@ -26,9 +27,8 @@ void gen_assignment_expr_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironme
 void gen_null_expr_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env);
 void gen_expr_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env);
 
-// address/lvalue-code-generator
+// address-code-generator
 void gen_address_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env);
-void gen_lvalue_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env);
 
 // statement-code-generator
 void gen_compound_stmt_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env);
@@ -43,6 +43,7 @@ void gen_global_declaration_list_code(Ast* ast, SymbolTable* symbol_table, CodeE
 void gen_global_declaration_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env);
 void gen_local_declaration_list_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env);
 void gen_local_declaration_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env);
+void gen_ident_initialization_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env);
 
 // external-declaration-generator
 void gen_external_declaration_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env);
@@ -69,15 +70,23 @@ void print_code(FILE* file_ptr, AstList* astlist) {
 
 // expression-code-generator
 void gen_primary_expr_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env) {
-    int stack_index = 0;
-
     switch (ast->type) {
         case AST_IMM_INT:
             append_code(env->codes, "\tpush $%d\n", ast->value_int);
             break;
         case AST_IDENT:
-            stack_index = symbol_table_get_stack_index(symbol_table, ast->value_ident);
-            append_code(env->codes, "\tmov -%d(%%rbp), %%rax\n", stack_index);
+            gen_address_code(ast, symbol_table, env);
+            append_code(env->codes, "\tpop %%rax\n");
+            switch (ast->ctype->size) {
+                case 1:
+                    append_code(env->codes, "\tmovsbq (%%rax), %%rax\n");
+                    break;
+                case 8:
+                    append_code(env->codes, "\tmov (%%rax), %%rax\n");
+                    break;
+                default:
+                    assert_code_gen(0);
+            }
             append_code(env->codes, "\tpush %%rax\n");
             break;
         default:
@@ -100,7 +109,7 @@ void gen_postfix_expr_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment*
                 gen_expr_code(ast_nth_child(rhs, i), symbol_table, env);
             }
             for (i = 0; i < num_args; i++) {
-                append_code(env->codes, "\tpop %%%s\n", arg_register[num_args - i - 1]);
+                append_code(env->codes, "\tpop %%%s\n", arg_register8[num_args - i - 1]);
             }
             append_code(env->codes, "\tcall _%s\n", lhs->value_ident);
             append_code(env->codes, "\tpush %%rax\n");
@@ -376,8 +385,10 @@ void gen_logical_expr_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment*
 }
 
 void gen_assignment_expr_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env) {
-    gen_expr_code(ast_nth_child(ast, 1), symbol_table, env);
-    gen_lvalue_code(ast_nth_child(ast, 0), symbol_table, env);
+    Ast* ident = ast_nth_child(ast, 0);
+    Ast* init = ast_nth_child(ast, 1);
+    gen_expr_code(init, symbol_table, env);
+    gen_address_code(ident, symbol_table, env);
 
     append_code(env->codes, "\tpop %%rdi\n");
     append_code(env->codes, "\tpop %%rax\n");
@@ -389,7 +400,17 @@ void gen_assignment_expr_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironme
             assert_code_gen(0);
     }
 
-    append_code(env->codes, "\tmov %%rax, (%%rdi)\n");
+    switch (ident->ctype->size) {
+        case 1:
+            append_code(env->codes, "\tmov %%al, (%%rdi)\n");
+            break;
+        case 8:
+            append_code(env->codes, "\tmov %%rax, (%%rdi)\n");
+            break;
+        default:
+            assert_code_gen(0);
+    }
+
     append_code(env->codes, "\tpush %%rax\n");
 }
 
@@ -422,7 +443,7 @@ void gen_expr_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env) {
 }
 
 
-// address/lvalue-code-generator
+// address-code-generator
 void gen_address_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env) {
     int stack_index = 0;
 
@@ -438,10 +459,6 @@ void gen_address_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env)
         default:
             assert_code_gen(0);
     }
-}
-
-void gen_lvalue_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env) {
-    return gen_address_code(ast, symbol_table, env);
 }
 
 // statement-code-generator
@@ -630,18 +647,12 @@ void gen_local_declaration_list_code(Ast* ast, SymbolTable* symbol_table, CodeEn
 
 void gen_local_declaration_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env) {
     Ast* ident = ast_nth_child(ast, 0);
-    Ast* init = NULL;
 
     switch(ast->type) {
         case AST_IDENT_DECL:
             symbol_table_push_into_stack(symbol_table, ident->value_ident);
             if (ast->children->size == 1) break;
-            init = ast_nth_child(ast, 1);
-            gen_expr_code(init, symbol_table, env);
-            gen_lvalue_code(ident, symbol_table, env);
-            append_code(env->codes, "\tpop %%rdi\n");
-            append_code(env->codes, "\tpop %%rax\n");
-            append_code(env->codes, "\tmov %%rax, (%%rdi)\n");
+            gen_ident_initialization_code(ast, symbol_table, env);
             break;
         case AST_ARRAY_DECL:
             symbol_table_push_into_stack(symbol_table, ident->value_ident);
@@ -650,6 +661,27 @@ void gen_local_declaration_code(Ast* ast, SymbolTable* symbol_table, CodeEnviron
             break;
         case AST_FUNC_DECL:
             // Do Nothing
+            break;
+        default:
+            assert_code_gen(0);
+    }
+}
+
+void gen_ident_initialization_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env) {
+    Ast* ident = ast_nth_child(ast, 0);
+    Ast* init = ast_nth_child(ast, 1);
+    gen_expr_code(init, symbol_table, env);
+    gen_address_code(ident, symbol_table, env);
+
+    append_code(env->codes, "\tpop %%rdi\n");
+    append_code(env->codes, "\tpop %%rax\n");
+
+    switch (ident->ctype->size) {
+        case 1:
+            append_code(env->codes, "\tmov %%al, (%%rdi)\n");
+            break;
+        case 8:
+            append_code(env->codes, "\tmov %%rax, (%%rdi)\n");
             break;
         default:
             assert_code_gen(0);
@@ -682,8 +714,18 @@ void gen_function_definition_code(Ast* ast, SymbolTable* symbol_table, CodeEnvir
     for (i = 0; i < size; i++) {
         Ast* param_ident = ast_nth_child(ast_nth_child(param_list, i), 0);
         symbol_table_push_into_stack(block->symbol_table, param_ident->value_ident);
+
         int stack_index = symbol_table_get_stack_index(block->symbol_table, param_ident->value_ident);
-        append_code(env->codes, "\tmov %%%s, -%d(%%rbp)\n", arg_register[i], stack_index);
+        switch (param_ident->ctype->size) {
+            case 1:
+                append_code(env->codes, "\tmov %%%s, -%d(%%rbp)\n", arg_register1[i], stack_index);
+                break;
+            case 8:
+                append_code(env->codes, "\tmov %%%s, -%d(%%rbp)\n", arg_register8[i], stack_index);
+                break;
+            default:
+                assert_code_gen(0);
+        }
     }
 
     i = 0, size = block->children->size;

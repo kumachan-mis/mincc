@@ -109,6 +109,7 @@ ReservedTokenList* reserved_token_list_new_keywords() {
     ReservedTokenList* keyword_list = vector_new();
     vector_reserve(keyword_list, size);
 
+    reserved_token_list_append(keyword_list, "char",   TOKEN_CHAR);
     reserved_token_list_append(keyword_list, "do",     TOKEN_DO);
     reserved_token_list_append(keyword_list, "else",   TOKEN_ELSE);
     reserved_token_list_append(keyword_list, "for",    TOKEN_FOR);

@@ -4,9 +4,24 @@
 #include <stdlib.h>
 
 
-void cast_inplace_array_to_ptr(Ast* ast) {
+void apply_inplace_integer_promotion(Ast* ast) {
     if (
-        ast->type != AST_IDENT ||
+        ast->ctype == NULL ||
+        ast->ctype->basic_ctype != CTYPE_CHAR
+    )
+    return;
+
+    ast->ctype->basic_ctype = CTYPE_INT;
+}
+
+void apply_inplace_usual_arithmetic_conversion(Ast* ast) {
+    apply_inplace_integer_promotion(ast_nth_child(ast, 0));
+    apply_inplace_integer_promotion(ast_nth_child(ast, 1));
+}
+
+void apply_inplace_array_to_ptr_conversion(Ast* ast) {
+    if (
+        ast->ctype == NULL ||
         ast->ctype->basic_ctype != CTYPE_ARRAY
     )
         return;
@@ -20,7 +35,7 @@ void cast_inplace_array_to_ptr(Ast* ast) {
     free(ptr);
 }
 
-void cast_inplace_function_declaration(Ast* ast) {
+void apply_inplace_function_declaration_conversion(Ast* ast) {
     if (ast->type != AST_FUNC_DECL) return;
 
     Ast* func_ident = ast_nth_child(ast, 0);

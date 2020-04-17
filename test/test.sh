@@ -715,4 +715,43 @@ int main() {
     put_int(y);
 }"                           "1\$5\$2\$5\$1\$5\$"
 
+test_mincc "
+char put_char(char x);
+
+int main() {
+    char c = 'a';
+    put_char(c);
+    c = 'b';
+    put_char(c);
+    return 0;
+}"                           "a\$b\$"
+
+test_mincc "
+char put_char(char x);
+
+char next(char x) {
+    return x + 1;
+}
+
+int main() {
+    put_char(next('a'));
+    put_char(next('b'));
+    put_char(next('t'));
+    put_char(next('k'));
+    put_char(next('y'));
+    return 0;
+}"                           "b\$c\$u\$l\$z\$"
+
+test_mincc "
+char* put_str(char* str);
+int main() {
+    char str[4];
+    str[0] = 'a';
+    str[1] = 'b';
+    str[2] = 'c';
+    str[3] = '\\0';
+    put_str(str);
+    return 0;
+}"                           "abc\$"
+
 teardown_test

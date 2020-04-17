@@ -6,6 +6,7 @@
 
 
 typedef enum {
+    CTYPE_CHAR,
     CTYPE_INT,
     CTYPE_PTR,
     CTYPE_ARRAY,
@@ -32,13 +33,18 @@ struct _CFuncType {
 
 
 // ctype
+CType* ctype_new_char();
 CType* ctype_new_int();
 CType* ctype_new_ptr(CType* ptr_to);
 CType* ctype_new_array(CType* array_of, int len);
 CType* ctype_new_func(CType* return_type, Vector* param_types);
 CType* ctype_copy(CType* ctype);
 int ctype_equals(CType* ctype_x, CType* ctype_y);
+int ctype_compatible(CType* ctype_x, CType* ctype_y);
 void ctype_delete(CType* ctype);
+
+// ctype-classifier
+int ctype_is_integer_ctype(CType* ctype);
 
 
 #endif  // _TYPE_H_
