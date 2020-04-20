@@ -1,8 +1,8 @@
 #include "gen.h"
 
 #include <stdlib.h>
+#include <string.h>
 #include "codenv.h"
-#include "genutil.h"
 #include "../parser/symboltable.h"
 #include "../common/memory.h"
 
@@ -10,6 +10,8 @@
 static char* arg_register1[] = { "dil", "sil", "dl",  "cl",  "r8b", "r9b" };
 static char* arg_register8[] = { "rdi", "rsi", "rdx", "rcx", "r8",  "r9"  };
 
+
+void put_code(FILE* file_ptr, Vector* codes);
 
 // expression-code-generator
 void gen_primary_expr_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env);
@@ -49,6 +51,10 @@ void gen_ident_initialization_code(Ast* ast, SymbolTable* symbol_table, CodeEnvi
 void gen_external_declaration_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env);
 void gen_function_definition_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env);
 
+// utils
+void gen_global_data_code(GlobalData* global_data, CodeEnvironment* env);
+int ilog2(int x);
+
 // assertion
 void assert_code_gen(int condition);
 
@@ -66,6 +72,14 @@ void print_code(FILE* file_ptr, AstList* astlist) {
     }
     put_code(file_ptr, codes);
     astlist->pos = 0;
+}
+
+void put_code(FILE* file_ptr, Vector* codes) {
+    size_t i = 0, size = codes->size;
+    for (i = 0; i < size; i++) {
+        char* str = (char*)vector_at(codes, i);
+        fputs(str, file_ptr);
+    }
 }
 
 // expression-code-generator
@@ -450,7 +464,11 @@ void gen_address_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env)
     switch(ast->type) {
         case AST_IDENT:
             stack_index = symbol_table_get_stack_index(symbol_table, ast->value_ident);
-            append_code(env->codes, "\tlea -%d(%%rbp), %%rax\n", stack_index);
+            if (stack_index >= 0) {
+                append_code(env->codes, "\tlea -%d(%%rbp), %%rax\n", stack_index);
+            } else {
+                append_code(env->codes, "\tlea _%s(%%rip), %%rax\n", ast->value_ident);
+            }
             append_code(env->codes, "\tpush %%rax\n");
             break;
         case AST_DEREF:
@@ -466,7 +484,6 @@ void gen_compound_stmt_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment
     size_t i = 0, size = ast->children->size;
     switch (ast->type) {
         case AST_COMP_STMT:
-            ast->symbol_table->stack_offset = symbol_table->stack_offset;
             for (i = 0; i < size; i++) {
                 Ast* child = ast_nth_child(ast, i);
                 if (is_declaration_list(child->type)) {
@@ -475,7 +492,6 @@ void gen_compound_stmt_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment
                     gen_stmt_code(child, ast->symbol_table, env);
                 }
             }
-            symbol_table->stack_offset = ast->symbol_table->stack_offset;
             break;
         default:
             assert_code_gen(0);
@@ -618,18 +634,22 @@ void gen_global_declaration_list_code(Ast* ast, SymbolTable* symbol_table, CodeE
 }
 
 void gen_global_declaration_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env) {
-    // Ast* ident = ast_nth_child(ast, 0);
-    // Ast* init = NULL;
+    Ast* ident = ast_nth_child(ast, 0);
+    GlobalData* global_data = symbol_table_get_global_data(symbol_table, ident->value_ident);
+    int align = 2;
 
     switch(ast->type) {
+        case AST_IDENT_DEF:
+        case AST_ARRAY_DEF:
+            append_code(env->codes, "\t.text\n");
+            append_code(env->codes, "\t.global _%s\n", ident->value_ident);
+            append_code(env->codes, "\t.data\n");
+            append_code(env->codes, "\t.align %d\n", align);
+            append_code(env->codes, "_%s:\n", ident->value_ident);
+            gen_global_data_code(global_data, env);
+            break;
         case AST_IDENT_DECL:
-            assert_code_gen(0);
-            // TODO: global variables
-            break;
         case AST_ARRAY_DECL:
-            assert_code_gen(0);
-            // TODO: global arrays
-            break;
         case AST_FUNC_DECL:
             // Do Nothing
             break;
@@ -646,16 +666,12 @@ void gen_local_declaration_list_code(Ast* ast, SymbolTable* symbol_table, CodeEn
 }
 
 void gen_local_declaration_code(Ast* ast, SymbolTable* symbol_table, CodeEnvironment* env) {
-    Ast* ident = ast_nth_child(ast, 0);
-
     switch(ast->type) {
-        case AST_IDENT_DECL:
-            symbol_table_push_into_stack(symbol_table, ident->value_ident);
+        case AST_IDENT_DEF:
             if (ast->children->size == 1) break;
             gen_ident_initialization_code(ast, symbol_table, env);
             break;
-        case AST_ARRAY_DECL:
-            symbol_table_push_into_stack(symbol_table, ident->value_ident);
+        case AST_ARRAY_DEF:
             if (ast->children->size == 1) break;
             // TODO: initializer of arrays
             break;
@@ -713,15 +729,14 @@ void gen_function_definition_code(Ast* ast, SymbolTable* symbol_table, CodeEnvir
 
     for (i = 0; i < size; i++) {
         Ast* param_ident = ast_nth_child(ast_nth_child(param_list, i), 0);
-        symbol_table_push_into_stack(block->symbol_table, param_ident->value_ident);
-
-        int stack_index = symbol_table_get_stack_index(block->symbol_table, param_ident->value_ident);
+        gen_address_code(param_ident, block->symbol_table, env);
+        append_code(env->codes, "\tpop %%rax\n");
         switch (param_ident->ctype->size) {
             case 1:
-                append_code(env->codes, "\tmov %%%s, -%d(%%rbp)\n", arg_register1[i], stack_index);
+                append_code(env->codes, "\tmov %%%s, (%%rax)\n", arg_register1[i]);
                 break;
             case 8:
-                append_code(env->codes, "\tmov %%%s, -%d(%%rbp)\n", arg_register8[i], stack_index);
+                append_code(env->codes, "\tmov %%%s, (%%rax)\n", arg_register8[i]);
                 break;
             default:
                 assert_code_gen(0);
@@ -739,6 +754,7 @@ void gen_function_definition_code(Ast* ast, SymbolTable* symbol_table, CodeEnvir
     }
 
     Vector* codes = vector_new();
+    append_code(codes, "\t.text\n");
     append_code(codes, "\t.global _%s\n", env->funcname);
     append_code(codes, "_%s:\n", env->funcname);
     append_code(codes, "\tpush %%rbp\n");
@@ -749,10 +765,56 @@ void gen_function_definition_code(Ast* ast, SymbolTable* symbol_table, CodeEnvir
     append_code(codes, "\tmov %%rbp, %%rsp\n");
     append_code(codes, "\tpop %%rbp\n");
     append_code(codes, "\tret\n");
-    append_code(codes, "\n");
 
     vector_delete(env->codes);
     env->codes = codes;
+}
+
+// utils
+void gen_global_data_code(GlobalData* global_data, CodeEnvironment* env) {
+    size_t i = 0, size = global_data->data->size;
+    for (i = 0; i < size; i++) {
+        GlobalDatum* datum = (GlobalDatum*)vector_at(global_data->data, i);
+        char size_name[6];
+        switch (datum->size) {
+            case 1:
+                strcpy(size_name, "byte");
+                break;
+            case 2:
+                strcpy(size_name, "value");
+                break;
+            case 4:
+                strcpy(size_name, "long");
+                break;
+            case 8:
+                strcpy(size_name, "quad");
+                break;
+            default:
+                assert_code_gen(0);
+        }
+        if (datum->address_of == NULL) {
+            append_code(env->codes, "\t.%s %d\n", size_name, datum->value_int);
+        } else {
+            append_code(env->codes, "\t.%s _%s\n", size_name, datum->address_of);
+        }
+    }
+
+    if (global_data->zero_size > 0) {
+        append_code(env->codes, "\t.zero %d\n", global_data->zero_size);
+    }
+}
+
+int ilog2(int x) {
+    if (x <= 0) {
+        assert_code_gen(0);
+        return -1;
+    }
+    int ret = 0;
+    while (x >= 2) {
+        ret++;
+        x /= 2;
+    }
+    return ret;
 }
 
 // assertion

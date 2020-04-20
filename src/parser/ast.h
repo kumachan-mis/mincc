@@ -71,10 +71,10 @@ typedef enum {
     AST_IDENT_DECL,
     AST_ARRAY_DECL,
     AST_FUNC_DECL,
-    AST_PARAM_LIST,
-
-    // external-declaration
+    AST_IDENT_DEF,
+    AST_ARRAY_DEF,
     AST_FUNC_DEF,
+    AST_PARAM_LIST,
 } AstType;
 
 typedef struct {
