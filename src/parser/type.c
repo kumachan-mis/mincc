@@ -114,7 +114,7 @@ int ctype_equals(CType* ctype_x, CType* ctype_y) {
 
 int ctype_compatible(CType* ctype_x, CType* ctype_y) {
     return (ctype_is_integer_ctype(ctype_x)   && ctype_is_integer_ctype(ctype_y))  ||
-           (ctype_x->basic_ctype == CTYPE_PTR && ctype_x->basic_ctype == CTYPE_PTR);
+           (ctype_x->basic_ctype == CTYPE_PTR && ctype_y->basic_ctype == CTYPE_PTR);
 }
 
 void ctype_delete(CType* ctype) {

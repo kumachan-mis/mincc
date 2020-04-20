@@ -608,6 +608,19 @@ int main() {
 
 test_mincc "
 int put_int(int x);
+int incr(int x) { return x + 1; }
+int main() {
+    int x; 
+    int* y = &x;
+    x = 17;
+    put_int(incr(incr(*y)));
+    put_int(*y);
+    put_int(x);
+    return 0;
+}"                           "19\$17\$17\$"
+
+test_mincc "
+int put_int(int x);
 
 int incr(int* x) {
     *x = *x + 1;
@@ -753,5 +766,105 @@ int main() {
     put_str(str);
     return 0;
 }"                           "abc\$"
+
+test_mincc "
+int x;
+int x;
+int put_int(int x);
+int main() {
+    int y = x + 7;
+    put_int(x);
+    put_int(y);
+    x = x - 3;
+    put_int(x);
+    put_int(y);
+}"                           "0\$7\$-3\$7\$"
+
+test_mincc "
+char x = 'a';
+char y;
+
+char put_char(char c);
+int main() {
+    int z = 'c';
+    put_char(x);
+    put_char(y);
+    put_char(z);
+}
+
+char y = 'b';
+"                            "a\$b\$c\$"
+
+test_mincc "
+int x;
+int* y = &x;
+
+int put_int(int x);
+int main() {
+    put_int(*y);
+    *y = *y + 3;
+    put_int(x);
+    put_int(*y);
+    return 0;
+}"                           "0\$3\$3\$"
+
+test_mincc "
+int x[5];
+
+int put_int(int x);
+
+int main() {
+    3[x] = 4;
+    x[1] = -7;
+    put_int(x[0]);
+    put_int(1[x]);
+    put_int(*(x + 3));
+    return 0;
+}"                           "0\$-7\$4\$"
+
+test_mincc "
+int x[5];
+int a;
+
+int put_int(int x);
+
+int assign() {
+    a = -2;
+    int i = 0;
+    for (i = 0; i < 5; i = i + 1)
+        x[i] = i*i;
+}
+
+int put_x() {
+    int i = 0;
+    for (i = 0; i < 5; i = i + 1)
+        put_int(x[i]);
+}
+
+int put_a() {
+    put_int(a);
+}
+
+int a;
+int a = 9;
+
+int main() {
+    int x = -5;
+    int b;
+    b = 6;
+    int a = 4;
+    put_int(a);
+    put_int(b);
+    put_int(x);
+    put_a();
+    assign();
+    a = -7;
+    put_a();
+    put_x();
+    put_int(a);
+    put_int(x);
+    put_int(b);
+    return 0;
+}"                           "4\$6\$-5\$9\$-2\$0\$1\$4\$9\$16\$-7\$-5\$6\$"
 
 teardown_test

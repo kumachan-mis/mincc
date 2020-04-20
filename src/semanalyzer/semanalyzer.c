@@ -39,6 +39,10 @@ void analyze_local_declaration_semantics(Ast* ast, SymbolTable* symbol_table);
 void analyze_external_declaration_semantics(Ast* ast, SymbolTable* symbol_table);
 void analyze_function_definition_semantics(Ast* ast, SymbolTable* symbol_table);
 
+// utils
+GlobalData* global_ident_declaration_to_data(Ast* ast);
+GlobalData* global_array_declaration_to_data(Ast* ast);
+
 // assertion
 void assert_semantics(int condition);
 
@@ -295,6 +299,7 @@ void analyze_compound_stmt_semantics(Ast* ast, SymbolTable* symbol_table) {
     SymbolTable* block_table = symbol_table_new(symbol_table);
     ast->symbol_table = block_table;
 
+    symbol_table_enter_into_block_scope(block_table);
     size_t i = 0, size = ast->children->size;
     for (i = 0; i < size; i++) {
         Ast* child = ast_nth_child(ast, i);
@@ -304,6 +309,7 @@ void analyze_compound_stmt_semantics(Ast* ast, SymbolTable* symbol_table) {
             analyze_stmt_semantics(child, block_table);
         }
     }
+    symbol_table_exit_from_block_scope(block_table);
 }
 
 void analyze_expr_stmt_semantics(Ast* ast, SymbolTable* symbol_table) {
@@ -384,27 +390,43 @@ void analyze_global_declaration_list_semantics(Ast* ast, SymbolTable* symbol_tab
 
 void analyze_global_declaration_semantics(Ast* ast, SymbolTable* symbol_table) {
     Ast* ident = ast_nth_child(ast, 0);
-    // Ast* init = NULL;
-    SymbolStatus status = SYMBOL_DECL;
+    Ast* init = NULL;
+
+    int is_first_declaration = !symbol_table_exists(symbol_table, ident->value_ident);
+    int has_initializer = ast->children->size != 1;
+    GlobalData* global_data = NULL;
 
     switch(ast->type) {
         case AST_IDENT_DECL:
-            assert_semantics(0);
-            // TODO: global variables
+            symbol_table_insert_copy(symbol_table, ident->value_ident, ident->ctype);
+            if (!has_initializer && !is_first_declaration) break;
+            if (is_first_declaration) ast->type = AST_IDENT_DEF;
+            if (has_initializer) {
+                init = ast_nth_child(ast, 1);
+                analyze_expr_semantics(init, symbol_table);
+                assert_semantics(ctype_compatible(ident->ctype, init->ctype));
+            }
+            global_data = global_ident_declaration_to_data(ast);
+            symbol_table_define_global(symbol_table, ident->value_ident, global_data);
             break;
         case AST_ARRAY_DECL:
-            assert_semantics(0);
-            // TODO: global arrays
+            symbol_table_insert_copy(symbol_table, ident->value_ident, ident->ctype);
+            if (!has_initializer && !is_first_declaration) break;
+            if (is_first_declaration) ast->type = AST_ARRAY_DEF;
+            if (has_initializer) {
+                assert_semantics(0);
+                // TODO: initializer of arrays
+            }
+            global_data = global_array_declaration_to_data(ast);
+            symbol_table_define_global(symbol_table, ident->value_ident, global_data);
             break;
         case AST_FUNC_DECL:
-            status = SYMBOL_DECL;
             apply_inplace_function_declaration_conversion(ast);
+            symbol_table_insert_copy(symbol_table, ident->value_ident, ident->ctype);
             break;
         default:
             assert_semantics(0);
     }
-
-    symbol_table_insert_copy(symbol_table, ident->value_ident, ident->ctype, status);
 }
 
 void analyze_local_declaration_list_semantics(Ast* ast, SymbolTable* symbol_table) {
@@ -417,30 +439,32 @@ void analyze_local_declaration_list_semantics(Ast* ast, SymbolTable* symbol_tabl
 void analyze_local_declaration_semantics(Ast* ast, SymbolTable* symbol_table) {
     Ast* ident = ast_nth_child(ast, 0);
     Ast* init = NULL;
-    SymbolStatus status = SYMBOL_DECL;
 
     switch(ast->type) {
         case AST_IDENT_DECL:
-            status = SYMBOL_DEF;
+            symbol_table_insert_copy(symbol_table, ident->value_ident, ident->ctype);
+            symbol_table_define_local(symbol_table, ident->value_ident);
+            ast->type = AST_IDENT_DEF;
             if (ast->children->size == 1) break;
             init = ast_nth_child(ast, 1);
             analyze_expr_semantics(init, symbol_table);
             assert_semantics(ctype_compatible(ident->ctype, init->ctype));
             break;
         case AST_ARRAY_DECL:
-            status = SYMBOL_DEF;
+            symbol_table_insert_copy(symbol_table, ident->value_ident, ident->ctype);
+            symbol_table_define_local(symbol_table, ident->value_ident);
+            ast->type = AST_ARRAY_DEF;
             if (ast->children->size == 1) break;
+            assert_semantics(0);
             // TODO: initializer of arrays
             break;
         case AST_FUNC_DECL:
-            status = SYMBOL_DECL;
             apply_inplace_function_declaration_conversion(ast);
+            symbol_table_insert_copy(symbol_table, ident->value_ident, ident->ctype);
             break;
         default:
             assert_semantics(0);
     }
-
-    symbol_table_insert_copy(symbol_table, ident->value_ident, ident->ctype, status);
 }
 
 // external-declaration-semantics-analyzer
@@ -462,7 +486,8 @@ void analyze_function_definition_semantics(Ast* ast, SymbolTable* symbol_table) 
     apply_inplace_function_declaration_conversion(func_decl);
 
     Ast* func_ident = ast_nth_child(func_decl, 0);
-    symbol_table_insert_copy(symbol_table, func_ident->value_ident, func_ident->ctype, SYMBOL_DEF);
+    symbol_table_insert_copy(symbol_table, func_ident->value_ident, func_ident->ctype);
+    symbol_table_define_global(symbol_table, func_ident->value_ident, NULL);
 
     SymbolTable* func_table = symbol_table_new(symbol_table);
     block->symbol_table = func_table;
@@ -470,7 +495,8 @@ void analyze_function_definition_semantics(Ast* ast, SymbolTable* symbol_table) 
     size_t i = 0, size = param_list->children->size;
     for (i = 0; i < size; i++) {
         Ast* param_ident = ast_nth_child(ast_nth_child(param_list, i), 0);
-        symbol_table_insert_copy(func_table, param_ident->value_ident, param_ident->ctype, SYMBOL_DEF);
+        symbol_table_insert_copy(func_table, param_ident->value_ident, param_ident->ctype);
+        symbol_table_define_local(func_table, param_ident->value_ident);
     }
 
     i = 0, size = block->children->size;
@@ -482,6 +508,45 @@ void analyze_function_definition_semantics(Ast* ast, SymbolTable* symbol_table) 
             analyze_stmt_semantics(child, func_table);
         }
     }
+}
+
+// utils
+GlobalData* global_ident_declaration_to_data(Ast* ast) {
+    GlobalData* global_data = global_data_new();
+
+    Ast* ident = ast_nth_child(ast, 0);
+    if (ast->children->size == 1) {
+        global_data_set_zero_size(global_data, ident->ctype->size);
+        return global_data;
+    }
+
+    Ast* init = ast_nth_child(ast, 1);
+    if (init->type == AST_IMM_INT) {
+        global_data_append_integer(global_data, init->value_int, ident->ctype->size);
+        global_data_set_zero_size(global_data, 0);
+    } else if (init->type == AST_ADDR) {
+        Ast* address_of = ast_nth_child(init, 0);
+        if (address_of->type != AST_IDENT) assert_semantics(0);
+        global_data_append_address(global_data, str_new(address_of->value_ident));
+        global_data_set_zero_size(global_data, 0);
+    } else {
+        assert_semantics(0);
+    }
+    return global_data;
+}
+
+GlobalData* global_array_declaration_to_data(Ast* ast) {
+    GlobalData* global_data = global_data_new();
+
+    Ast* ident = ast_nth_child(ast, 0);
+    if (ast->children->size == 1) {
+        global_data_set_zero_size(global_data, ident->ctype->size);
+        return global_data;
+    }
+
+    assert_semantics(0);
+    // TODO: initializer of arrays
+    return global_data;
 }
 
 // assertion

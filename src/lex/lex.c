@@ -18,6 +18,8 @@ Token* read_token_char(FileBuffer* fbuffer);
 Token* read_token_int(FileBuffer* fbuffer);
 Token* read_token_punct(FileBuffer* fbuffer, ReservedTokenList* punct_list);
 void skip_spaces(FileBuffer* fbuffer);
+
+// utils
 char* read_value_ident(FileBuffer* fbuffer);
 int read_escape_sequence(FileBuffer* fbuffer);
 
@@ -119,6 +121,7 @@ void skip_spaces(FileBuffer* fbuffer) {
     }
 }
 
+// utils
 char* read_value_ident(FileBuffer* fbuffer) {
     size_t len = 0, capacity = 2;
     char* value_ident = (char*)safe_malloc((capacity)*sizeof(char));
