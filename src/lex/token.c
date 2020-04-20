@@ -29,6 +29,8 @@ void tokenlist_pop(TokenList* tokenlist) {
 }
 
 void tokenlist_delete(TokenList* tokenlist) {
+    if (tokenlist == NULL) return;
+
     Vector* inner_vector = tokenlist->inner_vector;
     size_t i = 0, size = inner_vector->size;
     for (i = 0; i < size; i++) {
@@ -59,6 +61,8 @@ Token* token_new_ident(TokenType type, char* value_ident) {
 }
 
 void token_delete(Token* token) {
+    if (token == NULL) return;
+
     if (token->type == TOKEN_IDENT) {
         free(token->value_ident);
     }
@@ -126,6 +130,8 @@ ReservedTokenEntry* reserved_token_list_at(ReservedTokenList* reserved_token_lis
 }
 
 void reserved_token_list_delete(ReservedTokenList* reserved_token_list) {
+    if (reserved_token_list == NULL) return;
+
     size_t i = 0, size = reserved_token_list->size;
     for (i = 0; i < size; i++) {
         ReservedTokenEntry* entry = reserved_token_list_at(reserved_token_list, i);

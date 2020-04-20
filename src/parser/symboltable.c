@@ -53,9 +53,7 @@ void symbol_table_define_global(SymbolTable* symbol_table, char* symbol_name, Gl
         return;
     }
 
-    if (entry->global_data != NULL) {
-        global_data_delete(entry->global_data);
-    }
+    global_data_delete(entry->global_data);
     entry->global_data = global_data;
     if (global_data == NULL || entry->ctype->size > global_data->zero_size) {
         entry->status = SYMBOL_DEF;
@@ -141,6 +139,8 @@ int symbol_table_get_stack_index(SymbolTable* symbol_table, char* symbol_name) {
 }
 
 void symbol_table_delete(SymbolTable* symbol_table) {
+    if (symbol_table == NULL) return;
+
     Map* inner_map = symbol_table->inner_map;
     size_t i = 0, capacity = inner_map->capacity;
     for (i = 0; i < capacity; i++) {
@@ -164,10 +164,10 @@ Entry* entry_new(CType* ctype, SymbolStatus status) {
 }
 
 void entry_delete(Entry* entry) {
+    if (entry == NULL) return;
+
     ctype_delete(entry->ctype);
-    if (entry->global_data != NULL) {
-        global_data_delete(entry->global_data);
-    }
+    global_data_delete(entry->global_data);
     free(entry);
 }
 
@@ -200,6 +200,8 @@ void global_data_set_zero_size(GlobalData* global_data, int zero_size) {
 }
 
 void global_data_delete(GlobalData* global_data) {
+     if (global_data == NULL) return;
+    
     size_t i = 0, size = global_data->data->size;
     for (i = 0; i < size; i++) {
         GlobalDatum* datum = (GlobalDatum*)vector_at(global_data->data, i);

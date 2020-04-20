@@ -63,6 +63,8 @@ map_value_t map_find(Map* map, map_key_t key) {
 }
 
 void map_delete(Map* map) {
+    if (map == NULL) return;
+
     size_t capacity = map->capacity;
     size_t i;
     for (i = 0; i < capacity; ++i) {

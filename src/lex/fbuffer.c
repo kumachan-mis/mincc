@@ -50,6 +50,8 @@ void fbuffer_popn(FileBuffer* fbuffer, int n) {
 }
 
 void fbuffer_delete(FileBuffer* fbuffer) {
+    if (fbuffer == NULL) return;
+
     free(fbuffer->data);
     free(fbuffer);
 }

@@ -119,6 +119,7 @@ int ctype_compatible(CType* ctype_x, CType* ctype_y) {
 
 void ctype_delete(CType* ctype) {
     if (ctype == NULL) return;
+
     switch (ctype->basic_ctype) {
         case CTYPE_CHAR:
         case CTYPE_INT:

@@ -55,6 +55,8 @@ vector_item_t vector_at(Vector* vector, size_t index) {
 }
 
 void vector_delete(Vector* vector) {
+    if (vector == NULL) return;
+
     size_t size = vector->size;
     size_t i;
     for (i = 0; i < size; ++i) {
