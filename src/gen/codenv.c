@@ -46,6 +46,8 @@ char* create_new_label(CodeEnvironment* env) {
 }
 
 void code_environment_delete(CodeEnvironment* env) {
+    if (env == NULL) return;
+
     free(env->funcname);
     vector_delete(env->codes);
     free(env);

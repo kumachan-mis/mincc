@@ -25,6 +25,8 @@ void astlist_pop(AstList* astlist) {
 }
 
 void astlist_delete(AstList* astlist) {
+    if (astlist == NULL) return;
+
     Vector* inner_vector = astlist->inner_vector;
     size_t i = 0, size = inner_vector->size;
     for (i = 0; i < size; i++) {
@@ -80,6 +82,8 @@ Ast* ast_nth_child(Ast* ast, size_t n) {
 }
 
 void ast_delete(Ast* ast) {
+    if (ast == NULL) return;
+
     ctype_delete(ast->ctype);
     switch (ast->type) {
         case AST_IDENT:

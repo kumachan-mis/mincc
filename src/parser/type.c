@@ -43,6 +43,7 @@ CType* ctype_new_func(CType* return_type, Vector* param_types) {
 
 CType* ctype_copy(CType* ctype) {
     if (ctype == NULL) return NULL;
+
     CType* copied_ctype = ctype_new(ctype->basic_ctype, ctype->size);
     switch (copied_ctype->basic_ctype) {
         case CTYPE_CHAR:
@@ -119,6 +120,7 @@ int ctype_compatible(CType* ctype_x, CType* ctype_y) {
 
 void ctype_delete(CType* ctype) {
     if (ctype == NULL) return;
+
     switch (ctype->basic_ctype) {
         case CTYPE_CHAR:
         case CTYPE_INT:
