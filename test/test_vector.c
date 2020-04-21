@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include "../src/common/vector.h"
 #include "../src/common/memory.h"
 
@@ -38,6 +39,26 @@ int main() {
     assert(ptr == NULL);
     ptr = (int*)vector_at(vector, 7);
     assert(ptr == NULL);
+
+    free(vector_at(vector, 3));
+    vector_erase(vector, 3);
+    ptr = (int*)vector_at(vector, 3);
+    assert(*ptr == 1);
+    assert(vector->size == 5);
+    free(vector_at(vector, 3));
+    vector_erase(vector, 3);
+    ptr = (int*)vector_at(vector, 3);
+    assert(*ptr == 4);
+    assert(vector->size == 4);
+
+    free(vector_at(vector, 1));
+    vector_assign_at(vector, 1, int_new(9));
+    ptr = (int*)vector_at(vector, 0);
+    assert(*ptr == 5);
+    ptr = (int*)vector_at(vector, 1);
+    assert(*ptr == 9);
+    ptr = (int*)vector_at(vector, 2);
+    assert(*ptr == -1);
 
     vector_delete(vector);
 

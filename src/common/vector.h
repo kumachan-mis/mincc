@@ -20,6 +20,8 @@ void vector_reserve(Vector* vector, size_t size);
 void vector_push_back(Vector* vector, vector_item_t item);
 void vector_join(Vector* dist, Vector* src);
 vector_item_t vector_at(Vector* vector, size_t index);
+void vector_assign_at(Vector* vector, size_t index, vector_item_t item);
+size_t vector_erase(Vector* vector, size_t index);
 void vector_delete(Vector* vector);
 
 
