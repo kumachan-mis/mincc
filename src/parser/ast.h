@@ -2,7 +2,8 @@
 #define _AST_H_
 
 
-#include "symboltable.h"
+#include "globallist.h"
+#include "localtable.h"
 #include "../common/vector.h"
 
 
@@ -71,8 +72,6 @@ typedef enum {
     AST_IDENT_DECL,
     AST_ARRAY_DECL,
     AST_FUNC_DECL,
-    AST_IDENT_DEF,
-    AST_ARRAY_DEF,
     AST_FUNC_DEF,
     AST_PARAM_LIST,
 } AstType;
@@ -83,7 +82,7 @@ typedef struct {
     union {
         int value_int;
         char* value_ident;
-        SymbolTable* symbol_table;
+        LocalTable* local_table;
     };
     Vector* children;
 } Ast;
@@ -91,22 +90,23 @@ typedef struct {
 typedef struct {
     Vector* inner_vector;
     int pos;
-    SymbolTable* symbol_table;
+    GlobalList* global_list;
 } AstList;
 
 
 // astlist
+AstList* astlist_new();
 Ast* astlist_top(AstList* astlist);
 void astlist_pop(AstList* astlist);
+void astlist_erase_top(AstList* astlist);
 void astlist_delete(AstList* astlist);
-Ast* ast_nth_child(Ast* ast, size_t n);
 
 // ast
-AstList* astlist_new();
 Ast* ast_new(AstType type, size_t num_children, ...);
 Ast* ast_new_int(AstType type, int value_int);
 Ast* ast_new_ident(AstType type, char* value_ident);
 void ast_append_child(Ast* ast, Ast* child);
+Ast* ast_nth_child(Ast* ast, size_t n);
 void ast_delete(Ast* ast);
 
 // expression-ast-classifier

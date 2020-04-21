@@ -54,11 +54,26 @@ vector_item_t vector_at(Vector* vector, size_t index) {
     return vector->data[index];
 }
 
+void vector_assign_at(Vector* vector, size_t index, vector_item_t item) {
+    if (index < 0 || index >= vector->size) return;
+    vector->data[index] = item;
+}
+
+size_t vector_erase(Vector* vector, size_t index) {
+    if (index < 0 || index >= vector->size) return index;
+    size_t i = 0, size = vector->size;
+    for (i = index; i < size - 1; ++i) {
+        vector->data[i] = vector->data[i + 1];
+    }
+    vector->data[size - 1] = NULL;
+    vector->size--;
+    return index;
+}
+
 void vector_delete(Vector* vector) {
     if (vector == NULL) return;
 
-    size_t size = vector->size;
-    size_t i;
+    size_t i = 0, size = vector->size;
     for (i = 0; i < size; ++i) {
         free(vector->data[i]);
     }
