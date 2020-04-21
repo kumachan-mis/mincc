@@ -46,8 +46,7 @@ test_mincc "
 int put_int(int x);
 int main() { put_int(0);  return 0; }"   "0\$"
 test_mincc "
-int put_int(int x);
-int main() { put_int(42); return 0; }"  "42\$"
+int main() { int put_int(int x); put_int(42); return 0; }"  "42\$"
 
 test_mincc "
 int put_int(int x);
