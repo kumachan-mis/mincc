@@ -9,14 +9,14 @@ typedef struct {
     char* funcname;
     int num_labels;
     Vector* codes;
-} CodeEnvironment;
+} CodeEnv;
 
 
 // code-environment
-CodeEnvironment* code_environment_new();
+CodeEnv* codenv_new(char* funcname);
+char* codenv_create_label(CodeEnv* env);
+void codenv_delete(CodeEnv* env);
 void append_code(Vector* codes, char* format, ...);
-char* create_new_label(CodeEnvironment* env);
-void code_environment_delete(CodeEnvironment* env);
 
 
 #endif  // _CODENV_H_

@@ -125,30 +125,26 @@ ReservedTokenList* reserved_token_list_new_keywords() {
     return keyword_list;
 }
 
-ReservedTokenEntry* reserved_token_list_at(ReservedTokenList* reserved_token_list, size_t index) {
-    return (ReservedTokenEntry*)vector_at(reserved_token_list, index);
+ReservedTokenEntry* reserved_token_list_at(ReservedTokenList* token_list, size_t index) {
+    return (ReservedTokenEntry*)vector_at(token_list, index);
 }
 
-void reserved_token_list_delete(ReservedTokenList* reserved_token_list) {
-    if (reserved_token_list == NULL) return;
+void reserved_token_list_delete(ReservedTokenList* token_list) {
+    if (token_list == NULL) return;
 
-    size_t i = 0, size = reserved_token_list->size;
+    size_t i = 0, size = token_list->size;
     for (i = 0; i < size; i++) {
-        ReservedTokenEntry* entry = reserved_token_list_at(reserved_token_list, i);
+        ReservedTokenEntry* entry = reserved_token_list_at(token_list, i);
         free(entry->value_token);
         free(entry);
-        reserved_token_list->data[i] = NULL;
+        token_list->data[i] = NULL;
     }
-    vector_delete(reserved_token_list);
+    vector_delete(token_list);
 }
 
-void reserved_token_list_append(
-    ReservedTokenList* reserved_token_list,
-    char* value_token,
-    TokenType type
-) {
+void reserved_token_list_append(ReservedTokenList* token_list, char* value_token,  TokenType type) {
     ReservedTokenEntry* entry = (ReservedTokenEntry*)safe_malloc(sizeof(ReservedTokenEntry));
     entry->type = type;
     entry->value_token = str_new(value_token);
-    vector_push_back(reserved_token_list, entry);
+    vector_push_back(token_list, entry);
 }

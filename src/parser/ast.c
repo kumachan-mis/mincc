@@ -12,7 +12,7 @@ AstList* astlist_new() {
     AstList* astlist = (AstList*)safe_malloc(sizeof(AstList));
     astlist->inner_vector = vector_new();
     astlist->pos = 0;
-    astlist->symbol_table = NULL;
+    astlist->global_list = NULL;
     return astlist;
 }
 
@@ -22,6 +22,10 @@ Ast* astlist_top(AstList* astlist) {
 
 void astlist_pop(AstList* astlist) {
     astlist->pos++;
+}
+
+void astlist_erase_top(AstList* astlist) {
+    astlist->pos = vector_erase(astlist->inner_vector, astlist->pos);
 }
 
 void astlist_delete(AstList* astlist) {
@@ -34,7 +38,7 @@ void astlist_delete(AstList* astlist) {
         inner_vector->data[i] = NULL;
     }
     vector_delete(inner_vector);
-    symbol_table_delete(astlist->symbol_table);
+    global_list_delete(astlist->global_list);
     free(astlist);
 }
 
@@ -90,7 +94,7 @@ void ast_delete(Ast* ast) {
             free(ast->value_ident);
             break;
         case AST_COMP_STMT:
-            symbol_table_delete(ast->symbol_table);
+            local_table_delete(ast->local_table);
             break;
         default:
             break;
