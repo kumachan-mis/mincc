@@ -100,7 +100,7 @@ void global_list_delete(GlobalList* global_list) {
     vector_delete(global_list);
 }
 
-// global_variable
+// global-variable
 GlobalVariable* global_variable_new(char* symbol_name, CType* ctype, GlobalSymbolStatus status) {
     GlobalVariable* global_variable = (GlobalVariable*)safe_malloc(sizeof(GlobalVariable));
     global_variable->symbol_name = symbol_name;

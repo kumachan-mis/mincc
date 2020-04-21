@@ -92,7 +92,7 @@ void local_table_delete(LocalTable* local_table) {
     free(local_table);
 }
 
-// entry
+// local-table-entry
 LocalTableEntry* entry_new(CType* ctype, LocalSymbolStatus status) {
     LocalTableEntry* entry = (LocalTableEntry*)safe_malloc(sizeof(LocalTableEntry));
     entry->ctype = ctype;
