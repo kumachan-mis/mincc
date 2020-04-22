@@ -50,6 +50,7 @@ void gen_global_variable_code(GlobalVariable* gloval_variable, Vector* codes);
 void gen_function_definition_code(Ast* ast, Vector* codes);
 
 // utils
+char* create_size_label(int size);
 int ilog2(int x);
 
 // assertion
@@ -59,10 +60,11 @@ void assert_code_gen(int condition);
 void print_code(FILE* file_ptr, AstList* astlist) {
     Vector* codes = vector_new();
 
-    size_t i = 0, size = astlist->global_list->size;
-    for (i = 0; i < size; i++) {
-        GlobalVariable* global_variable = (GlobalVariable*)vector_at(astlist->global_list, i);
+    while (1) {
+        GlobalVariable* global_variable = global_list_top(astlist->global_list);
+        if (global_variable == NULL) break;
         gen_global_variable_code(global_variable, codes);
+        global_list_pop(astlist->global_list);
     }
     while (1) {
         Ast* ast = astlist_top(astlist);
@@ -72,6 +74,7 @@ void print_code(FILE* file_ptr, AstList* astlist) {
     }
 
     put_code(file_ptr, codes);
+    astlist->global_list->pos = 0;
     astlist->pos = 0;
 }
 
@@ -690,30 +693,24 @@ void gen_global_variable_code(GlobalVariable* gloval_variable, Vector* codes) {
     append_code(codes, "_%s:\n", variable_name);
 
     GlobalData* global_data = gloval_variable->global_data;
-    size_t i = 0, size = global_data->data->size;
+    size_t i = 0, size = global_data->inner_vector->size;
     for (i = 0; i < size; i++) {
-        GlobalDatum* datum = (GlobalDatum*)vector_at(global_data->data, i);
-        char size_name[6];
-        switch (datum->size) {
-            case 1:
-                strcpy(size_name, "byte");
+        GlobalDatum* datum = (GlobalDatum*)vector_at(global_data->inner_vector, i);
+        char* size_label = NULL;
+        switch (datum->type) {
+            case GBL_TYPE_INTEGER:
+                size_label = create_size_label(datum->size);
+                append_code(codes, "\t%s %d\n", size_label, datum->value_int);
+                free(size_label);
                 break;
-            case 2:
-                strcpy(size_name, "value");
+            case GBL_TYPE_ADDR:
+                size_label = create_size_label(datum->size);
+                append_code(codes, "\t%s _%s\n", size_label, datum->address_of);
+                free(size_label);
                 break;
-            case 4:
-                strcpy(size_name, "long");
+            case GBL_TYPE_STR:
+                append_code(codes, "\t.ascii \"%s\\0\"\n", datum->value_str);
                 break;
-            case 8:
-                strcpy(size_name, "quad");
-                break;
-            default:
-                assert_code_gen(0);
-        }
-        if (datum->address_of == NULL) {
-            append_code(codes, "\t.%s %d\n", size_name, datum->value_int);
-        } else {
-            append_code(codes, "\t.%s _%s\n", size_name, datum->address_of);
         }
     }
 
@@ -776,6 +773,27 @@ void gen_function_definition_code(Ast* ast, Vector* codes) {
 }
 
 // utils
+char* create_size_label(int size) {
+    char* size_label = (char*)safe_malloc(7 * sizeof(char));
+    switch (size) {
+        case 1:
+            strcpy(size_label, ".byte");
+            break;
+        case 2:
+            strcpy(size_label, ".value");
+            break;
+        case 4:
+            strcpy(size_label, ".long");
+            break;
+        case 8:
+            strcpy(size_label, ".quad");
+            break;
+        default:
+            assert_code_gen(0);
+    }
+    return size_label;
+}
+
 int ilog2(int x) {
     if (x <= 0) {
         assert_code_gen(0);
