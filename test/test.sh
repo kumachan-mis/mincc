@@ -761,7 +761,7 @@ int main() {
     str[0] = 'a';
     str[1] = 'b';
     str[2] = 'c';
-    str[3] = '\\0';
+    str[3] = '\0';
     put_str(str);
     return 0;
 }"                           "abc\$"
@@ -865,5 +865,32 @@ int main() {
     put_int(b);
     return 0;
 }"                           "4\$6\$-5\$9\$-2\$0\$1\$4\$9\$16\$-7\$-5\$6\$"
+
+test_mincc "
+int puts(char* s);
+int main() {
+    puts(\"abc\");
+    puts(\"Hello World!\");
+    puts(\"minimal cc\");
+    return 0;
+}"                           "abc\$Hello World!\$minimal cc\$"
+
+test_mincc "
+int my_strlen(char* s) {
+    int len = 0;
+    char* p = s;
+    for (p = s; *p != '\0'; p = p + 1) {
+        len = len + 1;
+    }
+    return len;
+}
+
+int printf(char* s, int x);
+int main() {
+    printf(\"%d\n\", my_strlen(\"Hello World!\"));
+    printf(\"%d\n\", my_strlen(\"abc\"));
+    printf(\"%d\n\", my_strlen(\"minimal cc\"));
+    return 0;
+}"                           "12\$3\$10\$"
 
 teardown_test

@@ -147,7 +147,16 @@ void gen_unary_expr_code(Ast* ast, LocalTable* local_table, CodeEnv* env) {
         case AST_DEREF:
             gen_expr_code(child, local_table, env);
             append_code(env->codes, "\tpop %%rax\n");
-            append_code(env->codes, "\tmov (%%rax), %%rax\n");
+            switch (ast->ctype->size) {
+                case 1:
+                    append_code(env->codes, "\tmovsbq (%%rax), %%rax\n");
+                    break;
+                case 8:
+                    append_code(env->codes, "\tmov (%%rax), %%rax\n");
+                    break;
+                default:
+                    assert_code_gen(0);
+            }
             append_code(env->codes, "\tpush %%rax\n");
             break;
         case AST_POSI:
@@ -404,8 +413,8 @@ void gen_logical_expr_code(Ast* ast, LocalTable* local_table, CodeEnv* env) {
 
 void gen_assignment_expr_code(Ast* ast, LocalTable* local_table, CodeEnv* env) {
     Ast* ident = ast_nth_child(ast, 0);
-    Ast* init = ast_nth_child(ast, 1);
-    gen_expr_code(init, local_table, env);
+    Ast* expr = ast_nth_child(ast, 1);
+    gen_expr_code(expr, local_table, env);
     gen_address_code(ident, local_table, env);
 
     append_code(env->codes, "\tpop %%rdi\n");
