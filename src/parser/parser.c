@@ -72,6 +72,9 @@ Ast* parse_primary_expr(TokenList* tokenlist) {
         case TOKEN_IMM_INT:
             ast = ast_new_int(AST_IMM_INT, token->value_int);
             break;
+        case TOKEN_IMM_STR:
+            ast = ast_new_str(AST_IMM_STR, str_new(token->value_str));
+            break;
         case TOKEN_IDENT:
             ast = ast_new_ident(AST_IDENT, str_new(token->value_ident));
             break;

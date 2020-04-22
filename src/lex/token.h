@@ -21,6 +21,7 @@ typedef enum {
 
     // constant
     TOKEN_IMM_INT,
+    TOKEN_IMM_STR,
 
     // punctuator
     TOKEN_LPAREN,
@@ -61,6 +62,7 @@ typedef struct {
     TokenType type;
     union {
         int value_int;
+        char* value_str;
         char* value_ident;
     };
 } Token;
@@ -87,6 +89,7 @@ void tokenlist_delete(TokenList* tokenlist);
 // token
 Token* token_new(TokenType type);
 Token* token_new_int(TokenType type, int value_int);
+Token* token_new_str(TokenType type, char* value_str);
 Token* token_new_ident(TokenType type, char* value_ident);
 void token_delete(Token* token);
 

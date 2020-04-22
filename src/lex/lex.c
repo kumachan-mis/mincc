@@ -16,10 +16,14 @@ Token* read_token(
 Token* read_token_keyword_or_ident(FileBuffer* fbuffer, ReservedTokenList* keyword_list);
 Token* read_token_char(FileBuffer* fbuffer);
 Token* read_token_int(FileBuffer* fbuffer);
+Token* read_token_str(FileBuffer* fbuffer);
 Token* read_token_punct(FileBuffer* fbuffer, ReservedTokenList* punct_list);
 void skip_spaces(FileBuffer* fbuffer);
 
 // utils
+int read_value_char(FileBuffer* fbuffer);
+int read_value_int(FileBuffer* fbuffer);
+char* read_value_str(FileBuffer* fbuffer);
 char* read_value_ident(FileBuffer* fbuffer);
 int read_escape_sequence(FileBuffer* fbuffer);
 
@@ -63,6 +67,8 @@ Token* read_token(
         return read_token_char(fbuffer);
     } else if (isdigit(c)) {
         return read_token_int(fbuffer);
+    } else if (c == '\"') {
+        return read_token_str(fbuffer);
     } else {
         return read_token_punct(fbuffer, punct_list);
     }
@@ -80,23 +86,18 @@ Token* read_token_keyword_or_ident(FileBuffer* fbuffer, ReservedTokenList* keywo
 
 Token* read_token_char(FileBuffer* fbuffer) {
     // character constant has type int
-    assert_and_pop_char(fbuffer, '\'');
-    int value_int = fbuffer_top(fbuffer);
-    if (value_int != '\\') fbuffer_pop(fbuffer);
-    else                   value_int = read_escape_sequence(fbuffer);
-    assert_and_pop_char(fbuffer, '\'');
-    return token_new_int(TOKEN_IMM_INT, value_int);
+    int value_char = read_value_char(fbuffer);
+    return token_new_int(TOKEN_IMM_INT, value_char);
 }
 
 Token* read_token_int(FileBuffer* fbuffer) {
-    int value_int = 0;
-    while (1) {
-        char c = fbuffer_top(fbuffer);
-        if (!isdigit(c)) break;
-        value_int = 10 * value_int + (c - '0');
-        fbuffer_pop(fbuffer);
-    }
-    return token_new_int(TOKEN_IMM_INT, value_int);;
+    int value_int = read_value_int(fbuffer);
+    return token_new_int(TOKEN_IMM_INT, value_int);
+}
+
+Token* read_token_str(FileBuffer* fbuffer) {
+    char* value_str = read_value_str(fbuffer);
+    return token_new_str(TOKEN_IMM_STR, value_str);
 }
 
 Token* read_token_punct(FileBuffer* fbuffer, ReservedTokenList* punct_list) {
@@ -122,6 +123,56 @@ void skip_spaces(FileBuffer* fbuffer) {
 }
 
 // utils
+int read_value_char(FileBuffer* fbuffer) {
+    // character constant has type int
+    assert_and_pop_char(fbuffer, '\'');
+    int value_char = fbuffer_top(fbuffer);
+    if (value_char != '\\') fbuffer_pop(fbuffer);
+    else                    value_char = read_escape_sequence(fbuffer);
+    assert_and_pop_char(fbuffer, '\'');
+    return value_char;
+}
+
+int read_value_int(FileBuffer* fbuffer) {
+    int value_int = 0;
+    while (1) {
+        char c = fbuffer_top(fbuffer);
+        if (!isdigit(c)) break;
+        value_int = 10 * value_int + (c - '0');
+        fbuffer_pop(fbuffer);
+    }
+    return value_int;
+}
+
+char* read_value_str(FileBuffer* fbuffer) {
+    assert_and_pop_char(fbuffer, '\"');
+    size_t len = 0, capacity = 2;
+    char* value_str = (char*)safe_malloc((capacity)*sizeof(char));
+
+    char c = fbuffer_top(fbuffer);
+    value_str[len] = c; len++;
+    fbuffer_pop(fbuffer);
+
+    while(1) {
+        c = fbuffer_top(fbuffer);
+        if (c == '\"') {
+            fbuffer_pop(fbuffer);
+            break;
+        }
+        if (c == '\\') c = read_escape_sequence(fbuffer);
+        else           fbuffer_pop(fbuffer);
+        value_str[len] = c; len++;
+        if (len + 1 == capacity) {
+            capacity *= 2;
+            value_str = (char*)safe_realloc(value_str, (capacity)*sizeof(char));
+        }
+    }
+
+    value_str[len] = '\0';
+    value_str = (char*)safe_realloc(value_str, (len+1)*sizeof(char));
+    return value_str;
+}
+
 char* read_value_ident(FileBuffer* fbuffer) {
     size_t len = 0, capacity = 2;
     char* value_ident = (char*)safe_malloc((capacity)*sizeof(char));

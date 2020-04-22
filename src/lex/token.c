@@ -54,6 +54,12 @@ Token* token_new_int(TokenType type, int value_int) {
     return token;
 }
 
+Token* token_new_str(TokenType type, char* value_str) {
+    Token* token = token_new(type);
+    token->value_str = value_str;
+    return token;
+}
+
 Token* token_new_ident(TokenType type, char* value_ident) {
     Token* token = token_new(type);
     token->value_ident = value_ident;
