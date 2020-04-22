@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "cast.h"
 #include "../common/memory.h"
 
@@ -69,19 +70,36 @@ void analyze_semantics(AstList* astlist) {
 
 // expression-semantics-analyzer
 void analyze_primary_expr_semantics(Ast* ast, GlobalList* global_list, LocalTable* local_table) {
-    CType* ctype = NULL;
-
      switch (ast->type) {
         case AST_IMM_INT:
             ast->ctype = ctype_new_int();
             break;
-        case AST_IDENT:
-            ctype = local_table_get_ctype(local_table, ast->value_ident);
+        case AST_IMM_STR: {
+            char* value_str = ast->value_str;
+            ast->value_str = NULL;
+            char* str_label = global_list_create_str_label(global_list);
+            CType* ctype = ctype_new_array(ctype_new_char(), strlen(value_str) + 1);
+
+            global_list_insert_copy(global_list, str_label, ctype);
+            GlobalData* global_data = global_data_new();
+            global_data_append_string(global_data, value_str);
+            global_data_set_zero_size(global_data, 0);
+            global_list_define(global_list, str_label, global_data);
+
+            ast->type = AST_IDENT;
+            ast->ctype = ctype;
+            ast->value_ident = str_label;
+            apply_inplace_array_to_ptr_conversion(ast);
+            break;
+        }
+        case AST_IDENT: {
+            CType* ctype = local_table_get_ctype(local_table, ast->value_ident);
             if (ctype == NULL) ctype = global_list_get_ctype(global_list, ast->value_ident);
             if (ctype == NULL) unbound_symbol_error(ast->value_ident);
             ast->ctype = ctype_copy(ctype);
             apply_inplace_array_to_ptr_conversion(ast);
             break;
+        }
         default:
             assert_semantics(0);
     }

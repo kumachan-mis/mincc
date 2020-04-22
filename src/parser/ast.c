@@ -70,6 +70,13 @@ Ast* ast_new_int(AstType type, int value_int) {
     return ast;
 }
 
+Ast* ast_new_str(AstType type, char* value_str) {
+    Ast* ast = ast_new(type, 0);
+    ast->value_str = value_str;
+    ast->ctype = NULL;
+    return ast;
+}
+
 Ast* ast_new_ident(AstType type, char* value_ident) {
     Ast* ast = ast_new(type, 0);
     ast->value_ident = value_ident;
@@ -112,7 +119,7 @@ void ast_delete(Ast* ast) {
 
 // expression-ast-classifier
 int is_primary_expr(AstType type) {
-    return type == AST_IMM_INT || type == AST_IDENT;
+    return type == AST_IMM_INT || type == AST_IMM_STR || type == AST_IDENT;
 }
 
 int is_postfix_expr(AstType type) {

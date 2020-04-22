@@ -9,8 +9,9 @@
 
 typedef enum {
     // primary-expression
-    AST_IDENT,
     AST_IMM_INT,
+    AST_IMM_STR,
+    AST_IDENT,
     // postfix-expression
     AST_FUNC_CALL,
     // argument-expression-list
@@ -81,6 +82,7 @@ typedef struct {
     CType* ctype;
     union {
         int value_int;
+        char* value_str;
         char* value_ident;
         LocalTable* local_table;
     };
@@ -104,6 +106,7 @@ void astlist_delete(AstList* astlist);
 // ast
 Ast* ast_new(AstType type, size_t num_children, ...);
 Ast* ast_new_int(AstType type, int value_int);
+Ast* ast_new_str(AstType type, char* value_str);
 Ast* ast_new_ident(AstType type, char* value_ident);
 void ast_append_child(Ast* ast, Ast* child);
 Ast* ast_nth_child(Ast* ast, size_t n);
