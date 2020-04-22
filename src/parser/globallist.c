@@ -17,7 +17,7 @@ void global_variable_delete(GlobalVariable* global_variable);
 void global_redefinition_error(char* symbol_name);
 void global_conflicting_type_error(char* symbol_name);
 void global_not_function_error(char* symbol_name);
-void label_limit_error();
+void str_label_limit_error();
 
 
 // global-list
@@ -116,7 +116,7 @@ GlobalData* global_list_get_global_data(GlobalList* global_list, char* symbol_na
 
 char* global_list_create_str_label(GlobalList* global_list) {
     if (global_list->num_str_labels == 1 << 30) {
-        label_limit_error();
+        str_label_limit_error();
         return NULL;
     }
     char* label = safe_malloc(14 * sizeof(char));
@@ -230,7 +230,7 @@ void global_not_function_error(char* symbol_name) {
     exit(1);
 }
 
-void label_limit_error() {
+void str_label_limit_error() {
     fprintf(stderr, "Error: cannot create new label\n");
     exit(1);
 }
