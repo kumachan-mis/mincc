@@ -162,7 +162,7 @@ char* read_value_str(FileBuffer* fbuffer) {
         if (c == '\\') c = read_escape_sequence(fbuffer);
         else           fbuffer_pop(fbuffer);
         value_str[len] = c; len++;
-        if (len + 1 == capacity) {
+        if (capacity <= len + 1) {
             capacity *= 2;
             value_str = (char*)safe_realloc(value_str, (capacity)*sizeof(char));
         }
@@ -187,7 +187,7 @@ char* read_value_ident(FileBuffer* fbuffer) {
         if (!isalnum(c) && c != '_') break;
         value_ident[len] = c; len++;
         fbuffer_pop(fbuffer);
-        if (len + 1 == capacity) {
+        if (capacity <= len + 1) {
             capacity *= 2;
             value_ident = (char*)safe_realloc(value_ident, (capacity)*sizeof(char));
         }
