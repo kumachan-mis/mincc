@@ -893,4 +893,29 @@ int main() {
     return 0;
 }"                           "12\$3\$10\$"
 
+test_mincc "
+int put_int(int x);
+
+int ga[3] = {6, 7, 8};
+int ga_fill[3] = {9};
+
+int main() {
+    int la[3] = {1, 2, 3};
+    int la_fill[3] = {4};
+    int i = 0;
+    for (i = 0; i < 3; i = i + 1) {
+        put_int(la[i]);
+    }
+    for (i = 0; i < 3; i = i + 1) {
+        put_int(la_fill[i]);
+    }
+    for (i = 0; i < 3; i = i + 1) {
+        put_int(ga[i]);
+    }
+    for (i = 0; i < 3; i = i + 1) {
+        put_int(ga_fill[i]);
+    }
+    return 0;
+}"                           "1\$2\$3\$4\$0\$0\$6\$7\$8\$9\$0\$0\$"
+
 teardown_test

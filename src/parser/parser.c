@@ -39,6 +39,7 @@ Ast* parse_declarator(TokenList* tokenlist, CType* basic_ctype);
 Ast* parse_direct_declarator(TokenList* tokenlist, CType* ctype);
 Ast* parse_param_list(TokenList* tokenlist);
 Ast* parse_param_declaration(TokenList* tokenlist);
+Ast* parse_initializer(TokenList* tokenlist);
 
 // external-declaration-parser
 Ast* parse_external_declaration(TokenList* tokenlist);
@@ -578,13 +579,10 @@ Ast* parse_init_declarator(TokenList* tokenlist, CType* basic_ctype) {
     Token* token = tokenlist_top(tokenlist);
     switch (ast->type) {
         case AST_IDENT_DECL:
-            if (token->type != TOKEN_EQ) break;
-            tokenlist_pop(tokenlist);
-            ast_append_child(ast, parse_assignment_expr(tokenlist));
-            break;
         case AST_ARRAY_DECL:
             if (token->type != TOKEN_EQ) break;
-            // TODO: initializer of arrays
+            tokenlist_pop(tokenlist);
+            ast_append_child(ast, parse_initializer(tokenlist));
             break;
         case AST_FUNC_DECL:
             // Do Nothing
@@ -672,6 +670,31 @@ Ast* parse_param_list(TokenList* tokenlist) {
 Ast* parse_param_declaration(TokenList* tokenlist) {
     CType* basic_ctype = parse_type_specifier(tokenlist);
     Ast* ast = parse_declarator(tokenlist, basic_ctype);
+    return ast;
+}
+
+Ast* parse_initializer(TokenList* tokenlist) {
+    Token* token = tokenlist_top(tokenlist);
+    if (token->type != TOKEN_LBRACE) return parse_assignment_expr(tokenlist);
+    tokenlist_pop(tokenlist);
+
+    Ast* ast = ast_new(AST_INIT_LIST, 0);
+    token = tokenlist_top(tokenlist);
+    if (token->type == TOKEN_RBRACE) {
+        tokenlist_pop(tokenlist);
+        return ast;
+    }
+
+    ast_append_child(ast, parse_assignment_expr(tokenlist));
+    while (1) {
+        token = tokenlist_top(tokenlist);
+        if (token->type == TOKEN_RBRACE) {
+            tokenlist_pop(tokenlist);
+            break;
+        }
+        assert_and_pop_token(tokenlist, TOKEN_COMMA);
+        ast_append_child(ast, parse_assignment_expr(tokenlist));
+    }
     return ast;
 }
 
