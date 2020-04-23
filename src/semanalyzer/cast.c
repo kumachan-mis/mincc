@@ -35,6 +35,16 @@ void apply_inplace_array_to_ptr_conversion(Ast* ast) {
     free(ptr);
 }
 
+void revert_inplace_array_to_ptr_conversion(Ast* ast) {
+    if (ast->type != AST_ARRAY_TO_PTR) return;
+
+    Ast* array = ast_nth_child(ast, 0);
+    ctype_delete(ast->ctype);
+    free(ast->children->data);
+    free(ast->children);
+    *ast = *array;
+}
+
 void apply_inplace_function_declaration_conversion(Ast* ast) {
     if (ast->type != AST_FUNC_DECL) return;
 
