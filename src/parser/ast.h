@@ -75,6 +75,7 @@ typedef enum {
     AST_FUNC_DECL,
     AST_FUNC_DEF,
     AST_PARAM_LIST,
+    AST_INIT_LIST
 } AstType;
 
 typedef struct {

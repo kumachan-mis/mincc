@@ -66,6 +66,7 @@ GlobalData* global_data_new();
 void global_data_append_integer(GlobalData* global_data, int value_int, int size);
 void global_data_append_address(GlobalData* global_data, char* address_of);
 void global_data_append_string(GlobalData* global_data, char* value_str);
+GlobalDatum* global_data_nth_datum(GlobalData* global_data, size_t n);
 void global_data_set_zero_size(GlobalData* global_data, int zero_size);
 void global_data_delete(GlobalData* global_data);
 

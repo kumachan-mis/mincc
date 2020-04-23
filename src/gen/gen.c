@@ -44,6 +44,7 @@ void gen_stmt_code(Ast* ast, LocalTable* local_table, CodeEnv* env);
 void gen_declaration_list_code(Ast* ast, LocalTable* local_table, CodeEnv* env);
 void gen_declaration_code(Ast* ast, LocalTable* local_table, CodeEnv* env);
 void gen_ident_initialization_code(Ast* ast, LocalTable* local_table, CodeEnv* env);
+void gen_array_initialization_code(Ast* ast, LocalTable* local_table, CodeEnv* env);
 
 // external-declaration-generator
 void gen_global_variable_code(GlobalVariable* gloval_variable, Vector* codes);
@@ -654,7 +655,7 @@ void gen_declaration_code(Ast* ast, LocalTable* local_table, CodeEnv* env) {
             break;
         case AST_ARRAY_DECL:
             if (ast->children->size == 1) break;
-            // TODO: initializer of arrays
+            gen_array_initialization_code(ast, local_table, env);
             break;
         case AST_FUNC_DECL:
             // Do Nothing
@@ -682,6 +683,35 @@ void gen_ident_initialization_code(Ast* ast, LocalTable* local_table, CodeEnv* e
             break;
         default:
             assert_code_gen(0);
+    }
+}
+
+void gen_array_initialization_code(Ast* ast, LocalTable* local_table, CodeEnv* env) {
+    Ast* ident = ast_nth_child(ast, 0);
+    Ast* init = ast_nth_child(ast, 1);
+
+    size_t i = 0, size = init->children->size;
+    int element_ctype_size = ident->ctype->array_of->size;
+    for (i = 0; i < size; i++) {
+        gen_expr_code(ast_nth_child(init, i), local_table, env);
+        if (i == 0) {
+            gen_address_code(ident, local_table, env);
+            append_code(env->codes, "\tpop %%rdi\n");
+        } else {
+            append_code(env->codes, "\tadd $%d, %%rdi\n", element_ctype_size);
+        }
+        append_code(env->codes, "\tpop %%rax\n");
+
+        switch (element_ctype_size) {
+            case 1:
+                append_code(env->codes, "\tmov %%al, (%%rdi)\n");
+                break;
+            case 8:
+                append_code(env->codes, "\tmov %%rax, (%%rdi)\n");
+                break;
+            default:
+                assert_code_gen(0);
+        }
     }
 }
 

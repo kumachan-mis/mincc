@@ -187,6 +187,10 @@ void global_data_append_string(GlobalData* global_data, char* value_str) {
     vector_push_back(global_data->inner_vector, datum);
 }
 
+GlobalDatum* global_data_nth_datum(GlobalData* global_data, size_t n) {
+    return (GlobalDatum*)vector_at(global_data->inner_vector, n);
+}
+
 void global_data_set_zero_size(GlobalData* global_data, int zero_size) {
     global_data->zero_size = zero_size;
 }
