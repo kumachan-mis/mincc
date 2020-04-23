@@ -52,7 +52,6 @@ void gen_function_definition_code(Ast* ast, Vector* codes);
 
 // utils
 char* create_size_label(int size);
-int ilog2(int x);
 
 // assertion
 void assert_code_gen(int condition);
@@ -212,7 +211,7 @@ void gen_multiplicative_expr_code(Ast* ast, LocalTable* local_table, CodeEnv* en
             append_code(env->codes, "\tpush %%rax\n");
             break;
         case AST_DIV:
-            append_code(env->codes, "\tcltd\n");
+            append_code(env->codes, "\tcdq\n");
             append_code(env->codes, "\tidiv %%edi\n");
             append_code(env->codes, "\tpush %%rax\n");
             break;
@@ -248,14 +247,14 @@ void gen_additive_expr_code(Ast* ast, LocalTable* local_table, CodeEnv* env) {
                 lhs_basic_ctype == CTYPE_PTR &&
                 rhs_basic_ctype == CTYPE_INT
             ) {
-                append_code(env->codes, "\tsal $%d, %%edi\n", ilog2(lhs->ctype->ptr_to->size));
+                append_code(env->codes, "\timul $%d, %%rdi\n", lhs->ctype->ptr_to->size);
                 append_code(env->codes, "\tadd %%rdi, %%rax\n");
                 append_code(env->codes, "\tpush %%rax\n");
             } else if (
                 lhs_basic_ctype == CTYPE_INT &&
                 rhs_basic_ctype == CTYPE_PTR
             ) {
-                append_code(env->codes, "\tsal $%d, %%eax\n", ilog2(rhs->ctype->ptr_to->size));
+                append_code(env->codes, "\timul $%d, %%rax\n", rhs->ctype->ptr_to->size);
                 append_code(env->codes, "\tadd %%rdi, %%rax\n");
                 append_code(env->codes, "\tpush %%rax\n");
             } else {
@@ -273,7 +272,7 @@ void gen_additive_expr_code(Ast* ast, LocalTable* local_table, CodeEnv* env) {
                 lhs_basic_ctype == CTYPE_PTR &&
                 rhs_basic_ctype == CTYPE_INT
             ) {
-                append_code(env->codes, "\tsal $%d, %%edi\n", ilog2(lhs->ctype->ptr_to->size));
+                append_code(env->codes, "\timul $%d, %%rdi\n", lhs->ctype->ptr_to->size);
                 append_code(env->codes, "\tsub %%rdi, %%rax\n");
                 append_code(env->codes, "\tpush %%rax\n");
             } else if (
@@ -282,7 +281,9 @@ void gen_additive_expr_code(Ast* ast, LocalTable* local_table, CodeEnv* env) {
                 ctype_equals(lhs->ctype->ptr_to, rhs->ctype->ptr_to)
             ) {
                 append_code(env->codes, "\tsub %%rdi, %%rax\n");
-                append_code(env->codes, "\tsar $%d, %%rax\n", ilog2(lhs->ctype->ptr_to->size));
+                append_code(env->codes, "\tmov $%d, %%rdi\n", lhs->ctype->ptr_to->size);
+                append_code(env->codes, "\tcqo\n");
+                append_code(env->codes, "\tidiv %%rdi\n");
                 append_code(env->codes, "\tpush %%rax\n");
             } else {
                 assert_code_gen(0);
@@ -831,19 +832,6 @@ char* create_size_label(int size) {
             assert_code_gen(0);
     }
     return size_label;
-}
-
-int ilog2(int x) {
-    if (x <= 0) {
-        assert_code_gen(0);
-        return -1;
-    }
-    int ret = 0;
-    while (x >= 2) {
-        ret++;
-        x /= 2;
-    }
-    return ret;
 }
 
 // assertion

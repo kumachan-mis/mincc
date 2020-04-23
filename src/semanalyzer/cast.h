@@ -8,6 +8,7 @@
 void apply_inplace_integer_promotion(Ast* ast);
 void apply_inplace_usual_arithmetic_conversion(Ast* ast);
 void apply_inplace_array_to_ptr_conversion(Ast* ast);
+void revert_inplace_array_to_ptr_conversion(Ast* ast);
 void apply_inplace_function_declaration_conversion(Ast* ast);
 
 #endif  // _CAST_H_

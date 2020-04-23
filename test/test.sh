@@ -373,6 +373,19 @@ int main() {
 
 test_mincc "
 int put_int(int x);
+
+int main() {
+    int* a[1];
+    int x = 5;
+    a[0] = &x;
+    put_int(*a[0]);
+    x = -1;
+    put_int(*a[0]);
+    return 0;
+}"                            "5\$-1\$"
+
+test_mincc "
+int put_int(int x);
 int one();
 int five();
 int main() {

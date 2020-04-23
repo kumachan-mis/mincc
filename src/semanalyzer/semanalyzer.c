@@ -142,6 +142,7 @@ void analyze_unary_expr_semantics(Ast* ast, GlobalList* global_list, LocalTable*
 
     switch (ast->type) {
         case AST_ADDR:
+            revert_inplace_array_to_ptr_conversion(child);
             assert_semantics(child->type == AST_IDENT || child->type == AST_DEREF);
             ast->ctype = ctype_new_ptr(ctype_copy(child->ctype));
             break;
