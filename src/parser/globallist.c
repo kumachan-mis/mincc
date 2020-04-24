@@ -182,7 +182,7 @@ void global_data_append_address(GlobalData* global_data, char* address_of) {
 void global_data_append_string(GlobalData* global_data, char* value_str) {
     GlobalDatum* datum = (GlobalDatum*)safe_malloc(sizeof(GlobalDatum));
     datum->type = GBL_TYPE_STR;
-    datum->size = (strlen(value_str)+1) * sizeof(char);
+    datum->size = strlen(value_str) + 1;
     datum->value_str = value_str;
     vector_push_back(global_data->inner_vector, datum);
 }
