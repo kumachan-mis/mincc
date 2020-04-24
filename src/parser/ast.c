@@ -97,6 +97,9 @@ void ast_delete(Ast* ast) {
 
     ctype_delete(ast->ctype);
     switch (ast->type) {
+        case AST_IMM_STR:
+            free(ast->value_str);
+            break;
         case AST_IDENT:
             free(ast->value_ident);
             break;
