@@ -18,7 +18,7 @@ CType* ctype_new_char() {
 }
 
 CType* ctype_new_int() {
-    return ctype_new(CTYPE_INT, 8);
+    return ctype_new(CTYPE_INT, 4);
 }
 
 CType* ctype_new_ptr(CType* ptr_to) {

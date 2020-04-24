@@ -932,6 +932,20 @@ int main() {
 }"                           "1\$2\$3\$4\$0\$0\$6\$7\$8\$9\$0\$0\$"
 
 test_mincc "
+char* put_str(char* s);
+
+char* global[2] = { \"global0\", \"global1\" };
+
+int main() {
+    char* local[2] = { \"local0\", \"local1\" };
+    put_str(local[0]);
+    put_str(local[1]);
+    put_str(global[0]);
+    put_str(global[1]);
+    return 0;
+}"                           "local0\$local1\$global0\$global1\$"
+
+test_mincc "
 char* put_str(char* str);
 
 char* global_ptr = \"global ptr\";
