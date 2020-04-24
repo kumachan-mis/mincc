@@ -931,4 +931,26 @@ int main() {
     return 0;
 }"                           "1\$2\$3\$4\$0\$0\$6\$7\$8\$9\$0\$0\$"
 
+test_mincc "
+char* put_str(char* str);
+
+char* global_ptr = \"global ptr\";
+char global_str[11] = \"global str\";
+char global_str_fill[20] = \"global str fill\";
+
+int main() {
+    char* local_ptr = \"local ptr\";
+    char local_str[10] = \"local str\";
+    char local_str_fill[20] = \"local str fill\";
+
+    put_str(local_ptr);
+    put_str(local_str);
+    put_str(local_str_fill);
+
+    put_str(global_ptr);
+    put_str(global_str);
+    put_str(global_str_fill);
+    return 0;
+}"                           "local ptr\$local str\$local str fill\$global ptr\$global str\$global str fill\$"
+
 teardown_test
