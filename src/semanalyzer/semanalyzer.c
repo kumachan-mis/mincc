@@ -84,20 +84,16 @@ void analyze_primary_expr_semantics(Ast* ast, GlobalList* global_list, LocalTabl
             ast->ctype = ctype_new_int();
             break;
         case AST_IMM_STR: {
-            char* value_str = ast->value_str;
-            ast->value_str = NULL;
-            char* str_label = global_list_create_str_label(global_list);
-            CType* ctype = ctype_new_array(ctype_new_char(), strlen(value_str) + 1);
+            Ast* ident = ast_new_ident(AST_IDENT, global_list_create_str_label(global_list));
+            ident->ctype = ctype_new_array(ctype_new_char(), strlen(ast->value_str) + 1);
 
-            global_list_insert_copy(global_list, str_label, ctype);
-            GlobalData* global_data = global_data_new();
-            global_data_append_string(global_data, value_str);
-            global_data_set_zero_size(global_data, 0);
-            global_list_define(global_list, str_label, global_data);
+            global_list_insert_copy(global_list, ident->value_ident, ident->ctype);
+            GlobalData* global_data = global_initializer_to_data(ast, ident->ctype, global_list);
+            global_list_define(global_list, ident->value_ident, global_data);
 
-            ast->type = AST_IDENT;
-            ast->ctype = ctype;
-            ast->value_ident = str_label;
+            free(ast->value_str);
+            *ast = *ident;
+            free(ident);
             apply_inplace_array_to_ptr_conversion(ast);
             break;
         }
