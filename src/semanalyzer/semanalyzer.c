@@ -19,7 +19,6 @@ void analyze_equality_expr_semantics(Ast* ast, GlobalList* global_list, LocalTab
 void analyze_bitwise_expr_semantics(Ast* ast, GlobalList* global_list, LocalTable* local_table);
 void analyze_logical_expr_semantics(Ast* ast, GlobalList* global_list, LocalTable* local_table);
 void analyze_assignment_expr_semantics(Ast* ast, GlobalList* global_list, LocalTable* local_table);
-void analyze_null_expr_semantics(Ast* ast, GlobalList* global_list, LocalTable* local_table);
 void analyze_expr_semantics(Ast* ast, GlobalList* global_list, LocalTable* local_table);
 
 // statement-semantics-analyzer
@@ -313,18 +312,7 @@ void analyze_expr_semantics(Ast* ast, GlobalList* global_list, LocalTable* local
     else if (is_bitwise_expr(type))        analyze_bitwise_expr_semantics(ast, global_list, local_table);
     else if (is_logical_expr(type))        analyze_logical_expr_semantics(ast, global_list, local_table);
     else if (is_assignment_expr(type))     analyze_assignment_expr_semantics(ast, global_list, local_table);
-    else if (is_null_expr(type))           analyze_null_expr_semantics(ast, global_list, local_table);
-    else                                   assert_semantics(0);
-}
-
-void analyze_null_expr_semantics(Ast* ast, GlobalList* global_list, LocalTable* local_table) {
-    switch (ast->type) {
-        case AST_NULL:
-            // Do Nothing
-            break;
-        default:
-            assert_semantics(0);
-    }
+    else if (!is_null_expr(type))          assert_semantics(0);
 }
 
 // statement-semantics-analyzer

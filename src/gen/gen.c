@@ -26,7 +26,6 @@ void gen_equality_expr_code(Ast* ast, LocalTable* local_table, CodeEnv* env);
 void gen_bitwise_expr_code(Ast* ast, LocalTable* local_table, CodeEnv* env);
 void gen_logical_expr_code(Ast* ast, LocalTable* local_table, CodeEnv* env);
 void gen_assignment_expr_code(Ast* ast, LocalTable* local_table, CodeEnv* env);
-void gen_null_expr_code(Ast* ast, LocalTable* local_table, CodeEnv* env);
 void gen_expr_code(Ast* ast, LocalTable* local_table, CodeEnv* env);
 
 // address-code-generator
@@ -443,16 +442,6 @@ void gen_assignment_expr_code(Ast* ast, LocalTable* local_table, CodeEnv* env) {
     append_code(env->codes, "\tpush %%rax\n");
 }
 
-void gen_null_expr_code(Ast* ast, LocalTable* local_table, CodeEnv* env) {
-    switch (ast->type) {
-        case AST_NULL:
-            // Do Nothing
-            break;
-        default:
-            assert_code_gen(0);
-    }
-}
-
 void gen_expr_code(Ast* ast, LocalTable* local_table, CodeEnv* env) {
     AstType type = ast->type;
     if (is_primary_expr(type))             gen_primary_expr_code(ast, local_table, env);
@@ -467,8 +456,7 @@ void gen_expr_code(Ast* ast, LocalTable* local_table, CodeEnv* env) {
     else if (is_bitwise_expr(type))        gen_bitwise_expr_code(ast, local_table, env);
     else if (is_logical_expr(type))        gen_logical_expr_code(ast, local_table, env);
     else if (is_assignment_expr(type))     gen_assignment_expr_code(ast, local_table, env);
-    else if (is_null_expr(type))           gen_null_expr_code(ast, local_table, env);
-    else                                   assert_code_gen(0);  
+    else if (!is_null_expr(type))          assert_code_gen(0);  
 }
 
 
