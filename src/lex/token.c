@@ -88,7 +88,7 @@ void token_delete(Token* token) {
 
 // reserved-token-list
 ReservedTokenList* reserved_token_list_new_punctuators() {
-    size_t size = 39;
+    size_t size = 27;
     ReservedTokenList* punctuator_list = vector_new();
     vector_reserve(punctuator_list, size);
 
@@ -101,42 +101,32 @@ ReservedTokenList* reserved_token_list_new_punctuators() {
     reserved_token_list_append(punctuator_list, ",",   TOKEN_COMMA);
     reserved_token_list_append(punctuator_list, ";",   TOKEN_SEMICOLON);
     reserved_token_list_append(punctuator_list, "||",  TOKEN_DBL_BAR);
-    reserved_token_list_append(punctuator_list, "|=",  TOKEN_BAR_EQ);
     reserved_token_list_append(punctuator_list, "|",   TOKEN_BAR);
-    reserved_token_list_append(punctuator_list, "^=",  TOKEN_HAT_EQ);
     reserved_token_list_append(punctuator_list, "^",   TOKEN_HAT);
     reserved_token_list_append(punctuator_list, "&&",  TOKEN_DBL_AND);
-    reserved_token_list_append(punctuator_list, "&=",  TOKEN_AND_EQ);
     reserved_token_list_append(punctuator_list, "&",   TOKEN_AND);
     reserved_token_list_append(punctuator_list, "~",   TOKEN_TILDER);
     reserved_token_list_append(punctuator_list, "==",  TOKEN_DBL_EQ);
     reserved_token_list_append(punctuator_list, "=",   TOKEN_EQ);
     reserved_token_list_append(punctuator_list, "!=",  TOKEN_EXCL_EQ);
     reserved_token_list_append(punctuator_list, "!",   TOKEN_EXCL);
-    reserved_token_list_append(punctuator_list, "<<=", TOKEN_DBL_LANGLE_EQ);
     reserved_token_list_append(punctuator_list, "<<",  TOKEN_DBL_LANGLE);
     reserved_token_list_append(punctuator_list, "<=",  TOKEN_LANGLE_EQ);
     reserved_token_list_append(punctuator_list, "<",   TOKEN_LANGLE);
-    reserved_token_list_append(punctuator_list, ">>=", TOKEN_DBL_RANGLE_EQ);
     reserved_token_list_append(punctuator_list, ">>",  TOKEN_DBL_RANGLE);
     reserved_token_list_append(punctuator_list, ">=",  TOKEN_RANGLE_EQ);
     reserved_token_list_append(punctuator_list, ">",   TOKEN_RANGLE);
-    reserved_token_list_append(punctuator_list, "+=",  TOKEN_PLUS_EQ);
     reserved_token_list_append(punctuator_list, "+",   TOKEN_PLUS);
-    reserved_token_list_append(punctuator_list, "-=",  TOKEN_MINUS_EQ);
     reserved_token_list_append(punctuator_list, "-",   TOKEN_MINUS);
-    reserved_token_list_append(punctuator_list, "*=",  TOKEN_ASTERISK_EQ);
     reserved_token_list_append(punctuator_list, "*",   TOKEN_ASTERISK);
-    reserved_token_list_append(punctuator_list, "/=",  TOKEN_SLASH_EQ);
     reserved_token_list_append(punctuator_list, "/",   TOKEN_SLASH);
-    reserved_token_list_append(punctuator_list, "%=",  TOKEN_PERCENT_EQ);
     reserved_token_list_append(punctuator_list, "%",   TOKEN_PERCENT);
 
     return punctuator_list;
 }
 
 ReservedTokenList* reserved_token_list_new_keywords() {
-    size_t size = 8;
+    size_t size = 7;
     ReservedTokenList* keyword_list = vector_new();
     vector_reserve(keyword_list, size);
 
