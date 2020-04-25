@@ -120,7 +120,7 @@ void ast_delete(Ast* ast) {
         ast_delete(vector_at(children, i));
         children->data[i] = NULL;
     }
-    free(children);
+    vector_delete(children);
     free(ast);
 }
 
