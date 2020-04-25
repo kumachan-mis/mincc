@@ -360,16 +360,57 @@ Ast* parse_assignment_expr(TokenList* tokenlist) {
     Ast* ast = parse_unary_expr(tokenlist);
 
     Token* token = tokenlist_top(tokenlist);
+    int op_type = -1;
     switch (token->type) {
         case TOKEN_EQ:
-            tokenlist_pop(tokenlist);
-            ast = ast_new(AST_ASSIGN, 2, ast, parse_assignment_expr(tokenlist));
+            op_type = AST_NULL;
+            break;
+        case TOKEN_ASTERISK_EQ:
+            op_type = AST_MUL;
+            break;
+        case TOKEN_SLASH_EQ:
+            op_type = AST_DIV;
+            break;
+        case TOKEN_PERCENT_EQ:
+            op_type = AST_MOD;
+            break;
+        case TOKEN_PLUS_EQ:
+            op_type = AST_ADD;
+            break;
+        case TOKEN_MINUS_EQ:
+            op_type = AST_SUB;
+            break;
+        case TOKEN_DBL_LANGLE_EQ:
+            op_type = AST_LSHIFT;
+            break;
+        case TOKEN_DBL_RANGLE_EQ:
+            op_type = AST_RSHIFT;
+            break;
+        case TOKEN_AND_EQ:
+            op_type = AST_AND;
+            break;
+        case TOKEN_HAT_EQ:
+            op_type = AST_XOR;
+            break;
+        case TOKEN_BAR_EQ:
+            op_type = AST_OR;
             break;
         default:
-            tokenlist->pos = pos_memo;
-            ast_delete(ast);
-            ast = parse_logical_or_expr(tokenlist);
+            op_type = -1;
             break;
+    }
+
+    if (op_type < 0) {
+        tokenlist->pos = pos_memo;
+        ast_delete(ast);
+        ast = parse_logical_or_expr(tokenlist);
+    } else if (op_type == AST_NULL) {
+        tokenlist_pop(tokenlist);
+        ast = ast_new(AST_ASSIGN, 2, ast, parse_assignment_expr(tokenlist));
+    } else {
+        tokenlist_pop(tokenlist);
+        Ast* op_ast = ast_new(op_type, 2, ast_copy(ast), parse_assignment_expr(tokenlist));
+        ast = ast_new(AST_ASSIGN, 2, ast, op_ast);
     }
     return ast;
 }
