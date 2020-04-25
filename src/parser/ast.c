@@ -7,6 +7,9 @@
 #include "../common/memory.h"
 
 
+// ast
+void ast_delete_members(Ast* ast);
+
 // astlist
 AstList* astlist_new() {
     AstList* astlist = (AstList*)safe_malloc(sizeof(AstList));
@@ -14,6 +17,10 @@ AstList* astlist_new() {
     astlist->pos = 0;
     astlist->global_list = NULL;
     return astlist;
+}
+
+void astlist_append(AstList* astlist, Ast* ast) {
+    vector_push_back(astlist->inner_vector, ast);
 }
 
 Ast* astlist_top(AstList* astlist) {
@@ -84,6 +91,12 @@ Ast* ast_new_ident(AstType type, char* value_ident) {
     return ast;
 }
 
+void ast_move(Ast* dest, Ast* src) {
+    ast_delete_members(dest);
+    *dest = *src;
+    free(src);
+}
+
 void ast_append_child(Ast* ast, Ast* child) {
     return vector_push_back(ast->children, child);
 }
@@ -92,10 +105,19 @@ Ast* ast_nth_child(Ast* ast, size_t n) {
     return (Ast*)vector_at(ast->children, n);
 }
 
+void ast_set_nth_child(Ast* ast, size_t n, Ast* child) {
+    vector_assign_at(ast->children, n, child);
+}
+
 void ast_delete(Ast* ast) {
     if (ast == NULL) return;
+    ast_delete_members(ast);
+    free(ast);
+}
 
+void ast_delete_members(Ast* ast) {
     ctype_delete(ast->ctype);
+
     switch (ast->type) {
         case AST_IMM_STR:
             free(ast->value_str);
@@ -116,8 +138,7 @@ void ast_delete(Ast* ast) {
         ast_delete(vector_at(children, i));
         children->data[i] = NULL;
     }
-    free(children);
-    free(ast);
+    vector_delete(children);
 }
 
 // expression-ast-classifier

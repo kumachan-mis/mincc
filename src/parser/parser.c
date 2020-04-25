@@ -52,12 +52,11 @@ void assert_syntax(int condition);
 
 AstList* parse(TokenList* tokenlist) {
     AstList* astlist = astlist_new();
-    Vector* inner_vector = astlist->inner_vector;
     while (1) {
         Token* token = tokenlist_top(tokenlist);
         if (token->type == TOKEN_EOF) break;
         Ast* ast = parse_external_declaration(tokenlist);
-        vector_push_back(inner_vector, ast);
+        astlist_append(astlist, ast);
     }
     tokenlist->pos = 0;
     return astlist;
@@ -368,6 +367,7 @@ Ast* parse_assignment_expr(TokenList* tokenlist) {
             break;
         default:
             tokenlist->pos = pos_memo;
+            ast_delete(ast);
             ast = parse_logical_or_expr(tokenlist);
             break;
     }
@@ -381,6 +381,7 @@ Ast* parse_expr(TokenList* tokenlist) {
 // statement-parser
 Ast* parse_compound_stmt(TokenList* tokenlist) {
     Ast* ast = ast_new(AST_COMP_STMT, 0);
+    ast->local_table = NULL;
 
     assert_and_pop_token(tokenlist, TOKEN_LBRACE);
     while (1) {
@@ -391,7 +392,7 @@ Ast* parse_compound_stmt(TokenList* tokenlist) {
         }
         if (token->type == TOKEN_CHAR || token->type == TOKEN_INT) {
             ast_append_child(ast, parse_declaration(tokenlist));
-        }else {
+        } else {
             ast_append_child(ast, parse_stmt(tokenlist));
         }
     }
@@ -643,7 +644,6 @@ Ast* parse_direct_declarator(TokenList* tokenlist, CType* ctype) {
             break;
         }
         default:
-            ident = ast_new_ident(AST_IDENT, str_new(token_ident->value_ident));
             ident->ctype = ctype;
             ast = ast_new(AST_IDENT_DECL, 1, ident);
             break;
@@ -709,6 +709,7 @@ Ast* parse_external_declaration(TokenList* tokenlist) {
         return ast_new(AST_FUNC_DEF, 2, ast, parse_compound_stmt(tokenlist));
     }
     tokenlist->pos = pos_memo;
+    ast_delete(ast);
     return parse_declaration(tokenlist);
 }
 
