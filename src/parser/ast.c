@@ -16,6 +16,10 @@ AstList* astlist_new() {
     return astlist;
 }
 
+void astlist_append(AstList* astlist, Ast* ast) {
+    vector_push_back(astlist->inner_vector, ast);
+}
+
 Ast* astlist_top(AstList* astlist) {
     return (Ast*)vector_at(astlist->inner_vector, astlist->pos);
 }

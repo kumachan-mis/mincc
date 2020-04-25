@@ -99,6 +99,7 @@ typedef struct {
 
 // astlist
 AstList* astlist_new();
+void astlist_append(AstList* astlist, Ast* ast);
 Ast* astlist_top(AstList* astlist);
 void astlist_pop(AstList* astlist);
 void astlist_erase_top(AstList* astlist);

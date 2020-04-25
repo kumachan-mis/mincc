@@ -52,12 +52,11 @@ void assert_syntax(int condition);
 
 AstList* parse(TokenList* tokenlist) {
     AstList* astlist = astlist_new();
-    Vector* inner_vector = astlist->inner_vector;
     while (1) {
         Token* token = tokenlist_top(tokenlist);
         if (token->type == TOKEN_EOF) break;
         Ast* ast = parse_external_declaration(tokenlist);
-        vector_push_back(inner_vector, ast);
+        astlist_append(astlist, ast);
     }
     tokenlist->pos = 0;
     return astlist;
