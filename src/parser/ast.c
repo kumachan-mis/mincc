@@ -96,7 +96,7 @@ Ast* ast_copy(Ast* ast) {
     copied_ast->ctype = ctype_copy(ast->ctype);
     switch (ast->type) {
         case AST_IMM_STR:
-            copied_ast->value_int = str_new(ast->value_str);
+            copied_ast->value_str = str_new(ast->value_str);
             break;
         case AST_IDENT:
             copied_ast->value_ident = str_new(ast->value_ident);
