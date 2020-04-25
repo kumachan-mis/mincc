@@ -6,6 +6,10 @@
 
 
 // ctype
+void ctype_delete_members(CType* ctype);
+
+
+// ctype
 CType* ctype_new(BasicCType basic_ctype, int size) {
     CType* ctype = (CType*)safe_malloc(sizeof(CType));
     ctype->basic_ctype = basic_ctype;
@@ -73,6 +77,12 @@ CType* ctype_copy(CType* ctype) {
     return copied_ctype;
 }
 
+void ctype_move(CType* dest, CType* src) {
+    ctype_delete_members(dest);
+    *dest = *src;
+    free(src);
+}
+
 int ctype_equals(CType* ctype_x, CType* ctype_y) {
     if (ctype_x == NULL && ctype_y == NULL) return 1;
     if (ctype_x == NULL || ctype_y == NULL) return 0;
@@ -120,7 +130,11 @@ int ctype_compatible(CType* ctype_x, CType* ctype_y) {
 
 void ctype_delete(CType* ctype) {
     if (ctype == NULL) return;
+    ctype_delete_members(ctype);
+    free(ctype);
+}
 
+void ctype_delete_members(CType* ctype) {
     switch (ctype->basic_ctype) {
         case CTYPE_CHAR:
         case CTYPE_INT:
@@ -146,7 +160,6 @@ void ctype_delete(CType* ctype) {
             break;
         }
     }
-    free(ctype);
 }
 
 // ctype-classifier

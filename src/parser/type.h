@@ -39,6 +39,7 @@ CType* ctype_new_ptr(CType* ptr_to);
 CType* ctype_new_array(CType* array_of, int len);
 CType* ctype_new_func(CType* return_type, Vector* param_types);
 CType* ctype_copy(CType* ctype);
+void ctype_move(CType* dest, CType* src);
 int ctype_equals(CType* ctype_x, CType* ctype_y);
 int ctype_compatible(CType* ctype_x, CType* ctype_y);
 void ctype_delete(CType* ctype);
