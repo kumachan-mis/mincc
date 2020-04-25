@@ -252,9 +252,6 @@ void analyze_relational_expr_semantics(Ast* ast, GlobalList* global_list, LocalT
     analyze_expr_semantics(lhs, global_list, local_table);
     analyze_expr_semantics(rhs, global_list, local_table);
     apply_inplace_usual_arithmetic_conversion(ast);
-    assert_semantics(lhs->ctype->basic_ctype == CTYPE_INT);
-    assert_semantics(rhs->ctype->basic_ctype == CTYPE_INT);
-    // TODO: not only int
     ast->ctype = ctype_new_int();
 }
 
@@ -264,9 +261,6 @@ void analyze_equality_expr_semantics(Ast* ast, GlobalList* global_list, LocalTab
     analyze_expr_semantics(lhs, global_list, local_table);
     analyze_expr_semantics(rhs, global_list, local_table);
     apply_inplace_usual_arithmetic_conversion(ast);
-    assert_semantics(lhs->ctype->basic_ctype == CTYPE_INT);
-    assert_semantics(rhs->ctype->basic_ctype == CTYPE_INT);
-    // TODO: not only int
     ast->ctype = ctype_new_int();
 }
 

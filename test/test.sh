@@ -383,6 +383,25 @@ int main() {
     put_int(*a[0]);
     return 0;
 }"                            "5\$-1\$"
+test_mincc "
+int put_int(int x);
+
+int main() {
+    int x = 10, y = 15;
+    int* p = &x;
+    int* q = &x;
+    put_int(p == q);
+    q = &y;
+    put_int(p != q);
+
+    int a[10] = {};
+    p = &a[0];
+    q = &a[2];
+    put_int(p < q);
+    put_int(a + 1 < a + 10);
+
+    return 0;
+}"                            "1\$1\$1\$1\$"
 
 test_mincc "
 int put_int(int x);

@@ -302,7 +302,16 @@ void gen_equality_expr_code(Ast* ast, LocalTable* local_table, CodeEnv* env) {
 
     append_code(env->codes, "\tpop %%rdi\n");
     append_code(env->codes, "\tpop %%rax\n");
-    append_code(env->codes, "\tcmp %%edi, %%eax\n");
+    switch (ast->ctype->size) {
+        case 4:
+            append_code(env->codes, "\tcmp %%edi, %%eax\n");
+            break;
+        case 8:
+            append_code(env->codes, "\tcmp %%rdi, %%rax\n");
+            break;
+        default:
+            assert_code_gen(0);
+    }
     switch (ast->type) {
         case AST_EQ:
             append_code(env->codes, "\tsete %%al\n");
@@ -323,7 +332,16 @@ void gen_relational_expr_code(Ast* ast, LocalTable* local_table, CodeEnv* env) {
 
     append_code(env->codes, "\tpop %%rdi\n");
     append_code(env->codes, "\tpop %%rax\n");
-    append_code(env->codes, "\tcmp %%edi, %%eax\n");
+    switch (ast->ctype->size) {
+        case 4:
+            append_code(env->codes, "\tcmp %%edi, %%eax\n");
+            break;
+        case 8:
+            append_code(env->codes, "\tcmp %%rdi, %%rax\n");
+            break;
+        default:
+            assert_code_gen(0);
+    }
     switch (ast->type) {
         case AST_LT:
             append_code(env->codes, "\tsetl %%al\n");
