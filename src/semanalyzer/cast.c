@@ -57,12 +57,16 @@ void apply_inplace_function_declaration_conversion(Ast* ast) {
         switch (param_decl->type) {
             case AST_IDENT_DECL:
                 break;
-            case AST_ARRAY_DECL:
-                param_ctype->basic_ctype = CTYPE_PTR;
-                param_ctype->ptr_to = param_ctype->array_of;
-                param_ident_ctype->basic_ctype = CTYPE_PTR;
-                param_ident_ctype->ptr_to = param_ident_ctype->array_of;
+            case AST_ARRAY_DECL: {
+                CType* ctype_ptr = NULL;
+                ctype_ptr = ctype_new_ptr(param_ctype->array_of);
+                *param_ctype = *ctype_ptr;
+                free(ctype_ptr);
+                ctype_ptr = ctype_new_ptr(param_ident_ctype->array_of);
+                *param_ident_ctype = *ctype_ptr;
+                free(ctype_ptr);
                 break;
+            }
             case AST_FUNC_DECL:
                 fprintf(stderr, "Error: function as a parameter is not supported\n");
                 // TODO: function as a param
