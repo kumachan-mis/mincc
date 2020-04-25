@@ -23,6 +23,11 @@ LocalTable* local_table_new(LocalTable* parent) {
     return local_table;
 }
 
+LocalTable* local_table_copy(LocalTable* local_table) {
+    fprintf(stderr, "Error: local_table_copy is not implemented\n");
+    exit(1);
+}
+
 void local_table_insert_copy(LocalTable* local_table, char* symbol_name, CType* ctype) {
     LocalTableEntry* existing_entry = (LocalTableEntry*)map_find(local_table->inner_map, symbol_name);
     if (existing_entry != NULL) {

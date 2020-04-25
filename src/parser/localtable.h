@@ -26,6 +26,7 @@ typedef struct _LocalTable {
 
 // local-table
 LocalTable* local_table_new(LocalTable* parent);
+LocalTable* local_table_copy(LocalTable* local_table);
 void local_table_insert_copy(LocalTable* local_table, char* symbol_name, CType* ctype);
 int local_table_exists(LocalTable* local_table, char* symbol_name);
 void local_table_define(LocalTable* local_table, char* symbol_name);

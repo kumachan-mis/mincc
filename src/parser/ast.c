@@ -91,6 +91,33 @@ Ast* ast_new_ident(AstType type, char* value_ident) {
     return ast;
 }
 
+Ast* ast_copy(Ast* ast) {
+    Ast* copied_ast = ast_new(ast->type, 0);
+    copied_ast->ctype = ctype_copy(ast->ctype);
+    switch (ast->type) {
+        case AST_IMM_STR:
+            copied_ast->value_int = str_new(ast->value_str);
+            break;
+        case AST_IDENT:
+            copied_ast->value_ident = str_new(ast->value_ident);
+            break;
+        case AST_COMP_STMT:
+            copied_ast->local_table = local_table_copy(ast->local_table);
+            break;
+        default:
+            break;
+    }
+
+    Vector* children = ast->children;
+    Vector* copied_children = copied_ast->children;
+    vector_reserve(copied_children, children->size);
+    size_t i = 0, size = children->size;
+    for (i = 0; i < size; i++) {
+        vector_push_back(copied_children, ast_copy(vector_at(children, i)));
+    }
+    return copied_ast;
+}
+
 void ast_move(Ast* dest, Ast* src) {
     ast_delete_members(dest);
     *dest = *src;
