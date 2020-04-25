@@ -75,6 +75,7 @@ void print_code(FILE* file_ptr, AstList* astlist) {
     }
 
     put_code(file_ptr, codes);
+    vector_delete(codes);
     astlist->global_list->pos = 0;
     astlist->pos = 0;
 }
