@@ -90,9 +90,7 @@ void analyze_primary_expr_semantics(Ast* ast, GlobalList* global_list, LocalTabl
             GlobalData* global_data = global_initializer_to_data(ast, ident->ctype, global_list);
             global_list_define(global_list, ident->value_ident, global_data);
 
-            free(ast->value_str);
-            *ast = *ident;
-            free(ident);
+            ast_move(ast, ident);
             apply_inplace_array_to_ptr_conversion(ast);
             break;
         }

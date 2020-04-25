@@ -30,7 +30,7 @@ void local_table_insert_copy(LocalTable* local_table, char* symbol_name, CType* 
         return;
     }
     LocalTableEntry* entry = entry_new(ctype_copy(ctype), LOCAL_SYMBOL_DECL);
-    map_insert(local_table->inner_map, str_new(symbol_name), entry);
+    map_insert(local_table->inner_map, symbol_name, entry);
 }
 
 int local_table_exists(LocalTable* local_table, char* symbol_name) {
