@@ -59,12 +59,10 @@ void apply_inplace_function_declaration_conversion(Ast* ast) {
                 break;
             case AST_ARRAY_DECL: {
                 CType* ctype_ptr = NULL;
-                ctype_ptr = ctype_new_ptr(param_ctype->array_of);
-                *param_ctype = *ctype_ptr;
-                free(ctype_ptr);
-                ctype_ptr = ctype_new_ptr(param_ident_ctype->array_of);
-                *param_ident_ctype = *ctype_ptr;
-                free(ctype_ptr);
+                ctype_ptr = ctype_new_ptr(ctype_copy(param_ctype->array_of));
+                ctype_move(param_ctype, ctype_ptr);
+                ctype_ptr = ctype_new_ptr(ctype_copy(param_ident_ctype->array_of));
+                ctype_move(param_ident_ctype, ctype_ptr);
                 break;
             }
             case AST_FUNC_DECL:

@@ -110,6 +110,7 @@ Ast* ast_new(AstType type, size_t num_children, ...);
 Ast* ast_new_int(AstType type, int value_int);
 Ast* ast_new_str(AstType type, char* value_str);
 Ast* ast_new_ident(AstType type, char* value_ident);
+Ast* ast_copy(Ast* ast);
 void ast_move(Ast* dest, Ast* src);
 void ast_append_child(Ast* ast, Ast* child);
 Ast* ast_nth_child(Ast* ast, size_t n);
