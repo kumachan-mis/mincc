@@ -126,6 +126,8 @@ char* global_list_create_str_label(GlobalList* global_list) {
 }
 
 void global_list_delete(GlobalList* global_list) {
+    if (global_list == NULL) return;
+
     Vector* inner_vector = global_list->inner_vector;
     size_t i = 0, size = inner_vector->size;
     for (i = 0; i < size; i++) {

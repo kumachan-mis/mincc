@@ -39,11 +39,10 @@ TokenList* tokenize(FILE* file_ptr) {
     ReservedTokenList* punct_list = reserved_token_list_new_punctuators();
 
     TokenList* tokenlist = tokenlist_new();
-    Vector* inner_vector = tokenlist->inner_vector;
     while (1) {
         skip_spaces(fbuffer);
         Token* token = read_token(fbuffer, keyword_list, punct_list);
-        vector_push_back(inner_vector, token);
+        tokenlist_append(tokenlist, token);
         if (token->type == TOKEN_EOF) break;
     }
 
@@ -79,7 +78,10 @@ Token* read_token_keyword_or_ident(FileBuffer* fbuffer, ReservedTokenList* keywo
     size_t i = 0, size = keyword_list->size;
     for (i = 0; i < size; i++) {
         ReservedTokenEntry* entry = reserved_token_list_at(keyword_list, i);
-        if (strcmp(value_ident, entry->value_token) == 0) return token_new(entry->type);
+        if (strcmp(value_ident, entry->value_token) == 0) {
+            free(value_ident);
+            return token_new(entry->type);
+        }
     }
     return token_new_ident(TOKEN_IDENT, value_ident);
 }

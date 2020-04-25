@@ -20,6 +20,10 @@ TokenList* tokenlist_new() {
     return tokenlist;
 }
 
+void tokenlist_append(TokenList* tokenlist, Token* token) {
+    vector_push_back(tokenlist->inner_vector, token);
+}
+
 Token* tokenlist_top(TokenList* tokenlist) {
     return (Token*)vector_at(tokenlist->inner_vector, tokenlist->pos);
 }
@@ -69,8 +73,15 @@ Token* token_new_ident(TokenType type, char* value_ident) {
 void token_delete(Token* token) {
     if (token == NULL) return;
 
-    if (token->type == TOKEN_IDENT) {
-        free(token->value_ident);
+    switch (token->type) {
+        case TOKEN_IDENT:
+            free(token->value_ident);
+            break;
+        case TOKEN_IMM_STR:
+            free(token->value_str);
+            break;
+        default:
+            break;
     }
     free(token);
 }

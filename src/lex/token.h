@@ -82,6 +82,7 @@ typedef Vector ReservedTokenList;
 
 // tokenlist
 TokenList* tokenlist_new();
+void tokenlist_append(TokenList* tokenlist, Token* token);
 Token* tokenlist_top(TokenList* tokenlist);
 void tokenlist_pop(TokenList* tokenlist);
 void tokenlist_delete(TokenList* tokenlist);

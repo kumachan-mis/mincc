@@ -75,6 +75,7 @@ void print_code(FILE* file_ptr, AstList* astlist) {
     }
 
     put_code(file_ptr, codes);
+    vector_delete(codes);
     astlist->global_list->pos = 0;
     astlist->pos = 0;
 }
@@ -672,7 +673,7 @@ void gen_global_variable_code(GlobalVariable* gloval_variable, Vector* codes) {
     GlobalData* global_data = gloval_variable->global_data;
     size_t i = 0, size = global_data->inner_vector->size;
     for (i = 0; i < size; i++) {
-        GlobalDatum* datum = (GlobalDatum*)vector_at(global_data->inner_vector, i);
+        GlobalDatum* datum = global_data_nth_datum(global_data, i);
         char* size_label = NULL;
         switch (datum->type) {
             case GBL_TYPE_INTEGER:

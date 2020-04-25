@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include "../common/memory.h"
 
 
 void apply_inplace_integer_promotion(Ast* ast) {
@@ -26,39 +27,33 @@ void apply_inplace_array_to_ptr_conversion(Ast* ast) {
     )
         return;
 
-    Ast* array = ast_new_ident(AST_IDENT, ast->value_ident);
-    array->ctype = ast->ctype;
+    Ast* array = ast_new_ident(AST_IDENT, str_new(ast->value_ident));
+    array->ctype = ctype_copy(ast->ctype);
     Ast* ptr = ast_new(AST_ARRAY_TO_PTR, 1, array);
     ptr->ctype = ctype_new_ptr(ctype_copy(array->ctype->array_of));
-
-    *ast = *ptr;
-    free(ptr);
+    ast_move(ast, ptr);
 }
 
 void revert_inplace_array_to_ptr_conversion(Ast* ast) {
     if (ast->type != AST_ARRAY_TO_PTR) return;
 
     Ast* array = ast_nth_child(ast, 0);
-    ctype_delete(ast->ctype);
-    free(ast->children->data);
-    free(ast->children);
-    *ast = *array;
+    ast_set_nth_child(ast, 0, NULL);
+    ast_move(ast, array);
 }
 
 void apply_inplace_function_declaration_conversion(Ast* ast) {
     if (ast->type != AST_FUNC_DECL) return;
 
     Ast* func_ident = ast_nth_child(ast, 0);
-    CType* func_ctype = func_ident->ctype;
-
     Ast* param_list = ast_nth_child(ast, 1);
+
     size_t i = 0, size = param_list->children->size;
     for (i = 0; i < size; i++) {
         Ast* param_decl =  ast_nth_child(param_list, i);
-        Ast* param_ident = ast_nth_child(param_decl, 0);
 
-        CType* param_ctype = (CType*)vector_at(func_ctype->func->param_types, i);
-        CType* param_ident_ctype = param_ident->ctype;
+        CType* param_ctype = (CType*)vector_at(func_ident->ctype->func->param_types, i);
+        CType* param_ident_ctype = ast_nth_child(param_decl, 0)->ctype;
         switch (param_decl->type) {
             case AST_IDENT_DECL:
                 break;

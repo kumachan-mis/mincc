@@ -99,6 +99,7 @@ typedef struct {
 
 // astlist
 AstList* astlist_new();
+void astlist_append(AstList* astlist, Ast* ast);
 Ast* astlist_top(AstList* astlist);
 void astlist_pop(AstList* astlist);
 void astlist_erase_top(AstList* astlist);
@@ -109,8 +110,10 @@ Ast* ast_new(AstType type, size_t num_children, ...);
 Ast* ast_new_int(AstType type, int value_int);
 Ast* ast_new_str(AstType type, char* value_str);
 Ast* ast_new_ident(AstType type, char* value_ident);
+void ast_move(Ast* dest, Ast* src);
 void ast_append_child(Ast* ast, Ast* child);
 Ast* ast_nth_child(Ast* ast, size_t n);
+void ast_set_nth_child(Ast* ast, size_t n, Ast* child);
 void ast_delete(Ast* ast);
 
 // expression-ast-classifier
