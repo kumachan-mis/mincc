@@ -148,13 +148,10 @@ void analyze_unary_expr_semantics(Ast* ast, GlobalList* global_list, LocalTable*
 
     switch (ast->type) {
         case AST_PRE_INCR:
-        case AST_PRE_DECR: {
-            Ast* child = ast_nth_child(ast, 0);
-            analyze_expr_semantics(child, global_list, local_table);
+        case AST_PRE_DECR:
             assert_semantics(child->type == AST_IDENT || child->type == AST_DEREF);
             ast->ctype = ctype_copy(child->ctype);
             break;
-        }
         case AST_ADDR:
             revert_inplace_array_to_ptr_conversion(child);
             assert_semantics(child->type == AST_IDENT || child->type == AST_DEREF);
