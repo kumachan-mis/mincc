@@ -121,8 +121,10 @@ ReservedTokenList* reserved_token_list_new_punctuators() {
     reserved_token_list_append(punctuator_list, ">>",  TOKEN_DBL_RANGLE);
     reserved_token_list_append(punctuator_list, ">=",  TOKEN_RANGLE_EQ);
     reserved_token_list_append(punctuator_list, ">",   TOKEN_RANGLE);
+    reserved_token_list_append(punctuator_list, "++",  TOKEN_DBL_PLUS);
     reserved_token_list_append(punctuator_list, "+=",  TOKEN_PLUS_EQ);
     reserved_token_list_append(punctuator_list, "+",   TOKEN_PLUS);
+    reserved_token_list_append(punctuator_list, "--",  TOKEN_DBL_MINUS);
     reserved_token_list_append(punctuator_list, "-=",  TOKEN_MINUS_EQ);
     reserved_token_list_append(punctuator_list, "-",   TOKEN_MINUS);
     reserved_token_list_append(punctuator_list, "*=",  TOKEN_ASTERISK_EQ);
