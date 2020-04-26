@@ -908,22 +908,21 @@ int main() {
 }"                           "abc\$Hello World!\$minimal cc\$"
 
 test_mincc "
-int my_strlen(char* s) {
+int mincc_strlen(char* str) {
     int len = 0;
-    char* p = s;
-    for (p = s; *p != '\0'; p = p + 1) {
-        len = len + 1;
-    }
+    char* p = str;
+    for (p = str; *p != '\0'; p++) len++;
     return len;
 }
 
-int printf(char* s, int x);
+int put_int(int x);
 int main() {
-    printf(\"%d\n\", my_strlen(\"Hello World!\"));
-    printf(\"%d\n\", my_strlen(\"abc\"));
-    printf(\"%d\n\", my_strlen(\"minimal cc\"));
+    put_int(mincc_strlen(\"Hello World!\"));
+    put_int(mincc_strlen(\"abc\"));
+    put_int(mincc_strlen(\"minimal cc\"));
+    put_int(mincc_strlen(\"\"));
     return 0;
-}"                           "12\$3\$10\$"
+}"                           "12\$3\$10\$0\$"
 
 test_mincc "
 int put_int(int x);
