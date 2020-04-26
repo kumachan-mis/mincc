@@ -151,12 +151,8 @@ char* read_value_str(FileBuffer* fbuffer) {
     size_t len = 0, capacity = 2;
     char* value_str = (char*)safe_malloc((capacity)*sizeof(char));
 
-    char c = fbuffer_top(fbuffer);
-    value_str[len] = c; len++;
-    fbuffer_pop(fbuffer);
-
     while(1) {
-        c = fbuffer_top(fbuffer);
+        char c = fbuffer_top(fbuffer);
         if (c == '\"') {
             fbuffer_pop(fbuffer);
             break;
