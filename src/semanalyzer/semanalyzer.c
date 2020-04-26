@@ -108,26 +108,35 @@ void analyze_primary_expr_semantics(Ast* ast, GlobalList* global_list, LocalTabl
 }
 
 void analyze_postfix_expr_semantics(Ast* ast, GlobalList* global_list, LocalTable* local_table) {
-    Ast* lhs = ast_nth_child(ast, 0);
-    Ast* rhs = ast_nth_child(ast, 1);
-    CType* ctype = NULL;
-
     switch (ast->type) {
-        case AST_FUNC_CALL:
+        case AST_FUNC_CALL: {
+            Ast* callable = ast_nth_child(ast, 0);
+            Ast* arg_list = ast_nth_child(ast, 1);
             // TODO: callable object not only an ident
-            assert_semantics(lhs->type == AST_IDENT);
-            ctype = local_table_get_ctype(local_table, lhs->value_ident);
-            if (ctype == NULL) ctype = global_list_get_function_ctype(global_list, lhs->value_ident);
-            assert_semantics(rhs->children->size == ctype->func->param_types->size);
-            size_t i = 0, num_args = rhs->children->size;
+            assert_semantics(callable->type == AST_IDENT);
+    
+            CType* ctype = local_table_get_ctype(local_table, callable->value_ident);
+            if (ctype == NULL) ctype = global_list_get_function_ctype(global_list, callable->value_ident);
+            assert_semantics(arg_list->children->size == ctype->func->param_types->size);
+    
+            size_t i = 0, num_args = arg_list->children->size;
             for (i = 0; i < num_args; i++) {
-                Ast* param = ast_nth_child(rhs, i);
+                Ast* param = ast_nth_child(arg_list, i);
                 CType* param_ctype = vector_at(ctype->func->param_types, i);
                 analyze_expr_semantics(param, global_list, local_table);
                 assert_semantics(ctype_compatible(param->ctype, param_ctype));
             }
             ast->ctype = ctype_copy(ctype->func->return_type);
             break;
+        }
+        case AST_POST_INCR:
+        case AST_POST_DECR: {
+            Ast* child = ast_nth_child(ast, 0);
+            analyze_expr_semantics(child, global_list, local_table);
+            assert_semantics(child->type == AST_IDENT || child->type == AST_DEREF);
+            ast->ctype = ctype_copy(child->ctype);
+            break;
+        }
         default:
             assert_semantics(0);
     }
@@ -138,6 +147,14 @@ void analyze_unary_expr_semantics(Ast* ast, GlobalList* global_list, LocalTable*
     analyze_expr_semantics(child, global_list, local_table);
 
     switch (ast->type) {
+        case AST_PRE_INCR:
+        case AST_PRE_DECR: {
+            Ast* child = ast_nth_child(ast, 0);
+            analyze_expr_semantics(child, global_list, local_table);
+            assert_semantics(child->type == AST_IDENT || child->type == AST_DEREF);
+            ast->ctype = ctype_copy(child->ctype);
+            break;
+        }
         case AST_ADDR:
             revert_inplace_array_to_ptr_conversion(child);
             assert_semantics(child->type == AST_IDENT || child->type == AST_DEREF);
@@ -284,10 +301,12 @@ void analyze_logical_expr_semantics(Ast* ast, GlobalList* global_list, LocalTabl
 void analyze_assignment_expr_semantics(Ast* ast, GlobalList* global_list, LocalTable* local_table) {
     Ast* lhs = ast_nth_child(ast, 0);
     Ast* rhs = ast_nth_child(ast, 1);
-    assert_semantics(lhs->type == AST_IDENT || lhs->type == AST_DEREF);
     analyze_expr_semantics(lhs, global_list, local_table);
     analyze_expr_semantics(rhs, global_list, local_table);
-    assert_semantics(ctype_compatible(lhs->ctype, rhs->ctype));
+    assert_semantics(
+        (lhs->type == AST_IDENT || lhs->type == AST_DEREF) &&
+        ctype_compatible(lhs->ctype, rhs->ctype)
+    );
     ast->ctype = ctype_copy(lhs->ctype);
 }
 
