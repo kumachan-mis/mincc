@@ -149,8 +149,7 @@ void gen_unary_expr_code(Ast* ast, LocalTable* local_table, CodeEnv* env) {
 
     switch (ast->type) {
         case AST_PRE_INCR:
-        case AST_PRE_DECR: {
-            Ast* child = ast_nth_child(ast, 0);
+        case AST_PRE_DECR:
             gen_address_code(child, local_table, env);
             append_code(env->codes, "\tmov %%rax, %%rdi\n");
             gen_load_code(child->ctype, env);
@@ -159,7 +158,6 @@ void gen_unary_expr_code(Ast* ast, LocalTable* local_table, CodeEnv* env) {
             append_code(env->codes, "\tpush %%rax\n");
             gen_store_code(ast->ctype, env);
             break;
-        }
         case AST_ADDR:
             gen_address_code(child, local_table, env);
             append_code(env->codes, "\tpush %%rax\n");
