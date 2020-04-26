@@ -98,7 +98,6 @@ void gen_primary_expr_code(Ast* ast, LocalTable* local_table, CodeEnv* env) {
             break;
         case AST_IDENT:
             gen_address_code(ast, local_table, env);
-            append_code(env->codes, "\tpop %%rax\n");
             gen_load_code(ast->ctype, env);
             append_code(env->codes, "\tpush %%rax\n");
             break;
@@ -132,7 +131,6 @@ void gen_postfix_expr_code(Ast* ast, LocalTable* local_table, CodeEnv* env) {
         case AST_POST_DECR: {
             Ast* child = ast_nth_child(ast, 0);
             gen_address_code(child, local_table, env);
-            append_code(env->codes, "\tpop %%rax\n");
             append_code(env->codes, "\tmov %%rax, %%rdi\n");
             gen_load_code(child->ctype, env);
             append_code(env->codes, "\tpush %%rax\n");
@@ -154,7 +152,6 @@ void gen_unary_expr_code(Ast* ast, LocalTable* local_table, CodeEnv* env) {
         case AST_PRE_DECR: {
             Ast* child = ast_nth_child(ast, 0);
             gen_address_code(child, local_table, env);
-            append_code(env->codes, "\tpop %%rax\n");
             append_code(env->codes, "\tmov %%rax, %%rdi\n");
             gen_load_code(child->ctype, env);
             if (ast->type == AST_PRE_INCR) gen_inc_code(child->ctype, env);
@@ -165,6 +162,7 @@ void gen_unary_expr_code(Ast* ast, LocalTable* local_table, CodeEnv* env) {
         }
         case AST_ADDR:
             gen_address_code(child, local_table, env);
+            append_code(env->codes, "\tpush %%rax\n");
             break;
         case AST_DEREF:
             gen_expr_code(child, local_table, env);
@@ -206,6 +204,7 @@ void gen_cast_expr_code(Ast* ast, LocalTable* local_table, CodeEnv* env) {
     switch (ast->type) {
         case AST_ARRAY_TO_PTR:
             gen_address_code(child, local_table, env);
+            append_code(env->codes, "\tpush %%rax\n");
             break;
         default:
             assert_code_gen(0);  
@@ -450,7 +449,7 @@ void gen_assignment_expr_code(Ast* ast, LocalTable* local_table, CodeEnv* env) {
     gen_expr_code(expr, local_table, env);
     gen_address_code(ident, local_table, env);
 
-    append_code(env->codes, "\tpop %%rdi\n");
+    append_code(env->codes, "\tmov %%rax, %%rdi\n");
     append_code(env->codes, "\tpop %%rax\n");
 
     switch (ast->type) {
@@ -659,7 +658,7 @@ void gen_ident_initialization_code(Ast* ast, LocalTable* local_table, CodeEnv* e
     gen_expr_code(init, local_table, env);
     gen_address_code(ident, local_table, env);
 
-    append_code(env->codes, "\tpop %%rdi\n");
+    append_code(env->codes, "\tmov %%rax, %%rdi\n");
     append_code(env->codes, "\tpop %%rax\n");
     gen_store_code(ident->ctype, env);
 }
@@ -674,7 +673,7 @@ void gen_array_initialization_code(Ast* ast, LocalTable* local_table, CodeEnv* e
         gen_expr_code(ast_nth_child(init, i), local_table, env);
         if (i == 0) {
             gen_address_code(ident, local_table, env);
-            append_code(env->codes, "\tpop %%rdi\n");
+            append_code(env->codes, "\tmov %%rax, %%rdi\n");
         } else {
             append_code(env->codes, "\tadd $%d, %%rdi\n", array_of->size);
         }
@@ -741,7 +740,6 @@ void gen_function_definition_code(Ast* ast, Vector* codes) {
     for (i = 0; i < size; i++) {
         Ast* param_ident = ast_nth_child(ast_nth_child(param_list, i), 0);
         gen_address_code(param_ident, block->local_table, env);
-        append_code(env->codes, "\tpop %%rax\n");
         gen_store_arg_code(i, param_ident->ctype, env);
     }
 
@@ -782,10 +780,10 @@ void gen_address_code(Ast* ast, LocalTable* local_table, CodeEnv* env) {
             } else {
                 append_code(env->codes, "\tlea _%s(%%rip), %%rax\n", ast->value_ident);
             }
-            append_code(env->codes, "\tpush %%rax\n");
             break;
         case AST_DEREF:
             gen_expr_code(ast_nth_child(ast, 0), local_table, env);
+            append_code(env->codes, "\tpop %%rax\n");
             break;
         default:
             assert_code_gen(0);
