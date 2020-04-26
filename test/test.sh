@@ -986,4 +986,36 @@ int main() {
     return 0;
 }"                           "local ptr\$local str\$local str fill\$global ptr\$global str\$global str fill\$"
 
+test_mincc "
+int put_int(int x);
+
+int main() {
+    int i = 0;
+    int a[2] = {10, 11};
+
+    i = 0;
+    put_int(a[i++]);
+    put_int(i);
+    i = 0;
+    put_int(a[++i]);
+    put_int(i);
+    return 0;
+}"                           "10\$1\$11\$1\$"
+
+test_mincc "
+int put_int(int x);
+
+int main() {
+    int i = 0;
+    int a[2] = {10, 11};
+
+    i = 1;
+    put_int(a[i--]);
+    put_int(i);
+    i = 1;
+    put_int(a[--i]);
+    put_int(i);
+    return 0;
+}"                           "11\$0\$10\$0\$"
+
 teardown_test

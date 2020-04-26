@@ -107,6 +107,14 @@ Ast* parse_postfix_expr(TokenList* tokenlist) {
                 ast = ast_new(AST_FUNC_CALL, 2, ast, parse_arg_expr_list(tokenlist));
                 assert_and_pop_token(tokenlist, TOKEN_RPAREN);
                 break;
+            case TOKEN_DBL_PLUS:
+                tokenlist_pop(tokenlist);
+                ast = ast_new(AST_POST_INCR, 1, ast);
+                break;
+            case TOKEN_DBL_MINUS:
+                tokenlist_pop(tokenlist);
+                ast = ast_new(AST_POST_DECR, 1, ast);
+                break;
             default:
                 return ast;
         }
@@ -132,6 +140,14 @@ Ast* parse_unary_expr(TokenList* tokenlist) {
 
     Token* token = tokenlist_top(tokenlist);
     switch (token->type) {
+        case TOKEN_DBL_PLUS:
+            tokenlist_pop(tokenlist);
+            ast = ast_new(AST_PRE_INCR, 1, parse_unary_expr(tokenlist));
+            break;
+        case TOKEN_DBL_MINUS:
+            tokenlist_pop(tokenlist);
+            ast = ast_new(AST_PRE_DECR, 1, parse_unary_expr(tokenlist));
+            break;
         case TOKEN_AND:
             tokenlist_pop(tokenlist);
             ast = ast_new(AST_ADDR, 1, parse_unary_expr(tokenlist));

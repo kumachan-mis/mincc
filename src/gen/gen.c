@@ -52,6 +52,8 @@ void gen_address_code(Ast* ast, LocalTable* local_table, CodeEnv* env);
 void gen_load_code(CType* ctype, CodeEnv* env);
 void gen_store_code(CType* ctype, CodeEnv* env);
 void gen_store_arg_code(int arg_index, CType* ctype, CodeEnv* env);
+void gen_inc_code(CType* ctype, CodeEnv* env);
+void gen_dec_code(CType* ctype, CodeEnv* env);
 char* create_size_label(int size);
 
 // assertion
@@ -106,25 +108,39 @@ void gen_primary_expr_code(Ast* ast, LocalTable* local_table, CodeEnv* env) {
 }
 
 void gen_postfix_expr_code(Ast* ast, LocalTable* local_table, CodeEnv* env) {
-    Ast* lhs = ast_nth_child(ast, 0);
-    Ast* rhs = ast_nth_child(ast, 1);
-
     switch (ast->type) {
-        case AST_FUNC_CALL:
+        case AST_FUNC_CALL: {
+            Ast* callable = ast_nth_child(ast, 0);
+            Ast* arg_list = ast_nth_child(ast, 1);
             // TODO: callable object not only an ident
-            assert_code_gen(lhs->type == AST_IDENT);
-            size_t i = 0, num_args = rhs->children->size;
+            assert_code_gen(callable->type == AST_IDENT);
+
+            size_t i = 0, num_args = arg_list->children->size;
             // TODO: more than six arguments
             assert_code_gen(num_args <= 6);
             for (i = 0; i < num_args; i++) {
-                gen_expr_code(ast_nth_child(rhs, i), local_table, env);
+                gen_expr_code(ast_nth_child(arg_list, i), local_table, env);
             }
             for (i = 0; i < num_args; i++) {
                 append_code(env->codes, "\tpop %s\n", arg_register8[num_args - i - 1]);
             }
-            append_code(env->codes, "\tcall _%s\n", lhs->value_ident);
+            append_code(env->codes, "\tcall _%s\n", callable->value_ident);
             append_code(env->codes, "\tpush %%rax\n");
             break;
+        }
+        case AST_POST_INCR:
+        case AST_POST_DECR: {
+            Ast* child = ast_nth_child(ast, 0);
+            gen_address_code(child, local_table, env);
+            append_code(env->codes, "\tpop %%rax\n");
+            append_code(env->codes, "\tmov %%rax, %%rdi\n");
+            gen_load_code(child->ctype, env);
+            append_code(env->codes, "\tpush %%rax\n");
+            if (ast->type == AST_POST_INCR) gen_inc_code(child->ctype, env);
+            else                            gen_dec_code(child->ctype, env);
+            gen_store_code(ast->ctype, env);
+            break;
+        }
         default:
             assert_code_gen(0);
     }
@@ -134,6 +150,19 @@ void gen_unary_expr_code(Ast* ast, LocalTable* local_table, CodeEnv* env) {
     Ast* child = ast_nth_child(ast, 0);
 
     switch (ast->type) {
+        case AST_PRE_INCR:
+        case AST_PRE_DECR: {
+            Ast* child = ast_nth_child(ast, 0);
+            gen_address_code(child, local_table, env);
+            append_code(env->codes, "\tpop %%rax\n");
+            append_code(env->codes, "\tmov %%rax, %%rdi\n");
+            gen_load_code(child->ctype, env);
+            if (ast->type == AST_PRE_INCR) gen_inc_code(child->ctype, env);
+            else                           gen_dec_code(child->ctype, env);
+            append_code(env->codes, "\tpush %%rax\n");
+            gen_store_code(ast->ctype, env);
+            break;
+        }
         case AST_ADDR:
             gen_address_code(child, local_table, env);
             break;
@@ -808,6 +837,26 @@ void gen_store_arg_code(int arg_index, CType* ctype, CodeEnv* env) {
             break;
         default:
             assert_code_gen(0);
+    }
+}
+
+void gen_inc_code(CType* ctype, CodeEnv* env) {
+    if (ctype_is_integer_ctype(ctype)) {
+        append_code(env->codes, "\tinc %%eax\n");
+    } else if (ctype->basic_ctype == CTYPE_PTR) {
+        append_code(env->codes, "\tadd $%d, %%rax\n", ctype->ptr_to->size);
+    } else {
+        assert_code_gen(0);
+    }
+}
+
+void gen_dec_code(CType* ctype, CodeEnv* env) {
+    if (ctype_is_integer_ctype(ctype)) {
+        append_code(env->codes, "\tdec %%eax\n");
+    } else if (ctype->basic_ctype == CTYPE_PTR) {
+        append_code(env->codes, "\tsub $%d, %%rax\n", ctype->ptr_to->size);
+    } else {
+        assert_code_gen(0);
     }
 }
 
