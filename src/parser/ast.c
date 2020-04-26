@@ -174,13 +174,15 @@ int is_primary_expr(AstType type) {
 }
 
 int is_postfix_expr(AstType type) {
-    return type == AST_FUNC_CALL;
+    return type == AST_FUNC_CALL ||
+           type == AST_POST_INCR || type == AST_POST_DECR;
 }
 
 int is_unary_expr(AstType type) {
-    return type == AST_ADDR || type == AST_DEREF ||
-           type == AST_POSI || type == AST_NEGA  ||
-           type == AST_NOT  || type == AST_LNOT;
+    return type == AST_PRE_INCR || type == AST_PRE_DECR ||
+           type == AST_ADDR     || type == AST_DEREF    ||
+           type == AST_POSI     || type == AST_NEGA     ||
+           type == AST_NOT      || type == AST_LNOT;
 }
 
 int is_cast_expr(AstType type) {

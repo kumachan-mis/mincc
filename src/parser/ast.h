@@ -14,9 +14,13 @@ typedef enum {
     AST_IDENT,
     // postfix-expression
     AST_FUNC_CALL,
+    AST_POST_INCR,
+    AST_POST_DECR,
     // argument-expression-list
     AST_ARG_LIST,
     // unary-expression
+    AST_PRE_INCR,
+    AST_PRE_DECR,
     AST_ADDR,
     AST_DEREF,
     AST_POSI,
