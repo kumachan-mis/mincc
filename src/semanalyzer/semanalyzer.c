@@ -61,16 +61,19 @@ void analyze_semantics(AstList* astlist) {
     while (1) {
         Ast* ast = astlist_top(astlist);
         if (ast == NULL) break;
-    
-        if (is_declaration_list(ast->type)) {
-            analyze_global_declaration_list_semantics(ast, global_list);
-            ast_delete(ast);
-            astlist_erase_top(astlist);
-        } else if (ast->type == AST_FUNC_DEF) {
-            analyze_function_definition_semantics(ast, global_list);
-            astlist_pop(astlist);
-        } else {
-            assert_semantics(0);
+
+        switch (ast->type) {
+            case AST_DECL_LIST:
+                analyze_global_declaration_list_semantics(ast, global_list);
+                ast_delete(ast);
+                astlist_erase_top(astlist);
+                break;
+            case AST_FUNC_DEF:
+                analyze_function_definition_semantics(ast, global_list);
+                astlist_pop(astlist);
+                break;
+            default:
+                assert_semantics(0);
         }
     }
     astlist->pos = 0;
@@ -332,7 +335,7 @@ void analyze_compound_stmt_semantics(Ast* ast, GlobalList* global_list, LocalTab
     size_t i = 0, size = ast->children->size;
     for (i = 0; i < size; i++) {
         Ast* child = ast_nth_child(ast, i);
-        if (is_declaration_list(child->type)) {
+        if (child->type == AST_DECL_LIST) {
             analyze_local_declaration_list_semantics(child, global_list, block_table);
         } else {
             analyze_stmt_semantics(child, global_list, block_table);
@@ -423,8 +426,10 @@ void analyze_global_declaration_semantics(Ast* ast, GlobalList* global_list) {
     GlobalData* global_data = NULL;
     LocalTable* empty_table = local_table_new(NULL);
 
-    switch(ast->type) {
-        case AST_IDENT_DECL:
+    switch(ident->ctype->basic_ctype) {
+        case CTYPE_CHAR:
+        case CTYPE_INT:
+        case CTYPE_PTR:
             global_list_insert_copy(global_list, ident->value_ident, ident->ctype);
             if (ast->children->size == 1) {
                 global_list_tentatively_define(global_list, ident->value_ident);
@@ -436,7 +441,7 @@ void analyze_global_declaration_semantics(Ast* ast, GlobalList* global_list) {
             global_data = global_initializer_to_data(init, ident->ctype, global_list);
             global_list_define(global_list, ident->value_ident, global_data);
             break;
-        case AST_ARRAY_DECL:
+        case CTYPE_ARRAY:
             global_list_insert_copy(global_list, ident->value_ident, ident->ctype);
             if (ast->children->size == 1) {
                 global_list_tentatively_define(global_list, ident->value_ident);
@@ -453,12 +458,10 @@ void analyze_global_declaration_semantics(Ast* ast, GlobalList* global_list) {
             global_data = global_initializer_to_data(init, ident->ctype, global_list);
             global_list_define(global_list, ident->value_ident, global_data);
             break;
-        case AST_FUNC_DECL:
+        case CTYPE_FUNC:
             apply_inplace_function_declaration_conversion(ast);
             global_list_insert_copy(global_list, ident->value_ident, ident->ctype);
             break;
-        default:
-            assert_semantics(0);
     }
 
     local_table_delete(empty_table);
@@ -475,8 +478,10 @@ void analyze_local_declaration_semantics(Ast* ast, GlobalList* global_list, Loca
     Ast* ident = ast_nth_child(ast, 0);
     Ast* init = NULL;
 
-    switch(ast->type) {
-        case AST_IDENT_DECL:
+    switch(ident->ctype->basic_ctype) {
+        case CTYPE_CHAR:
+        case CTYPE_INT:
+        case CTYPE_PTR:
             local_table_insert_copy(local_table, ident->value_ident, ident->ctype);
             local_table_define(local_table, ident->value_ident);
             if (ast->children->size == 1) break;
@@ -484,7 +489,7 @@ void analyze_local_declaration_semantics(Ast* ast, GlobalList* global_list, Loca
             analyze_expr_semantics(init, global_list, local_table);
             assert_semantics(ctype_compatible(ident->ctype, init->ctype));
             break;
-        case AST_ARRAY_DECL:
+        case CTYPE_ARRAY:
             local_table_insert_copy(local_table, ident->value_ident, ident->ctype);
             local_table_define(local_table, ident->value_ident);
             if (ast->children->size == 1) break;
@@ -499,12 +504,10 @@ void analyze_local_declaration_semantics(Ast* ast, GlobalList* global_list, Loca
             }
             array_initializer_fill_zeros(init, ident->ctype);
             break;
-        case AST_FUNC_DECL:
+        case CTYPE_FUNC:
             apply_inplace_function_declaration_conversion(ast);
             local_table_insert_copy(local_table, ident->value_ident, ident->ctype);
             break;
-        default:
-            assert_semantics(0);
     }
 }
 
@@ -540,7 +543,7 @@ void analyze_function_definition_semantics(Ast* ast, GlobalList* global_list) {
     i = 0, size = block->children->size;
     for (i = 0; i < size; i++) {
         Ast* child = ast_nth_child(block, i);
-        if (is_declaration_list(child->type)) {
+        if (child->type == AST_DECL_LIST) {
             analyze_local_declaration_list_semantics(child, global_list, func_table);
         } else {
             analyze_stmt_semantics(child, global_list, func_table);
