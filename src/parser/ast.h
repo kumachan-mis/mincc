@@ -74,9 +74,7 @@ typedef enum {
 
     // declaration
     AST_DECL_LIST,
-    AST_IDENT_DECL,
-    AST_ARRAY_DECL,
-    AST_FUNC_DECL,
+    AST_DECL,
     AST_FUNC_DEF,
     AST_PARAM_LIST,
     AST_INIT_LIST
@@ -142,10 +140,6 @@ int is_expr_stmt(AstType type);
 int is_selection_stmt(AstType type);
 int is_iteration_stmt(AstType type);
 int is_jump_stmt(AstType type);
-
-// declaration-ast-classifier
-int is_declaration_list(AstType type);
-int is_declaration(AstType type);
 
 
 #endif  // _AST_H_

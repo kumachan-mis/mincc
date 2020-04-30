@@ -40,6 +40,7 @@ Ast* parse_direct_declarator(TokenList* tokenlist, CType* ctype);
 Ast* parse_param_list(TokenList* tokenlist);
 Ast* parse_param_declaration(TokenList* tokenlist);
 Ast* parse_initializer(TokenList* tokenlist);
+Ast* parse_initializer_list(TokenList* tokenlist);
 
 // external-declaration-parser
 Ast* parse_external_declaration(TokenList* tokenlist);
@@ -633,20 +634,21 @@ CType* parse_type_specifier(TokenList* tokenlist) {
 
 Ast* parse_init_declarator(TokenList* tokenlist, CType* basic_ctype) {
     Ast* ast = parse_declarator(tokenlist, basic_ctype);
+    Ast* ident = ast_nth_child(ast, 0);
 
     Token* token = tokenlist_top(tokenlist);
-    switch (ast->type) {
-        case AST_IDENT_DECL:
-        case AST_ARRAY_DECL:
+    switch (ident->ctype->basic_ctype) {
+        case CTYPE_CHAR:
+        case CTYPE_INT:
+        case CTYPE_PTR:
+        case CTYPE_ARRAY:
             if (token->type != TOKEN_EQ) break;
             tokenlist_pop(tokenlist);
             ast_append_child(ast, parse_initializer(tokenlist));
             break;
-        case AST_FUNC_DECL:
+        case CTYPE_FUNC:
             // Do Nothing
             break;
-        default:
-            assert_syntax(0);
     }
     return ast;
 }
@@ -659,8 +661,7 @@ Ast* parse_declarator(TokenList* tokenlist, CType* basic_ctype) {
         tokenlist_pop(tokenlist);
         ctype = ctype_new_ptr(ctype);
     }
-    Ast* ast = parse_direct_declarator(tokenlist, ctype);
-    return ast;
+    return parse_direct_declarator(tokenlist, ctype);
 }
 
 Ast* parse_direct_declarator(TokenList* tokenlist, CType* ctype) {
@@ -680,7 +681,7 @@ Ast* parse_direct_declarator(TokenList* tokenlist, CType* ctype) {
             ident->ctype = ctype_new_array(ctype, token->value_int);
             // TODO: assignment-expr for array length
 
-            ast = ast_new(AST_ARRAY_DECL, 1, ident);
+            ast = ast_new(AST_DECL, 1, ident);
             assert_and_pop_token(tokenlist, TOKEN_RBRACKET);
             break;
         case TOKEN_LPAREN: {
@@ -697,12 +698,12 @@ Ast* parse_direct_declarator(TokenList* tokenlist, CType* ctype) {
                 vector_push_back(param_types, ctype_copy(param_ident->ctype));
             }
             ident->ctype = ctype_new_func(ctype, param_types);
-            ast = ast_new(AST_FUNC_DECL, 2, ident, param_list);
+            ast = ast_new(AST_DECL, 2, ident, param_list);
             break;
         }
         default:
             ident->ctype = ctype;
-            ast = ast_new(AST_IDENT_DECL, 1, ident);
+            ast = ast_new(AST_DECL, 1, ident);
             break;
     }
     // TODO: loop for complex declatations
@@ -711,6 +712,7 @@ Ast* parse_direct_declarator(TokenList* tokenlist, CType* ctype) {
 
 Ast* parse_param_list(TokenList* tokenlist) {
     Ast* ast = ast_new(AST_PARAM_LIST, 0);
+
     Token* token = tokenlist_top(tokenlist);
     if (token->type == TOKEN_RPAREN) return ast;
 
@@ -731,24 +733,29 @@ Ast* parse_param_declaration(TokenList* tokenlist) {
 }
 
 Ast* parse_initializer(TokenList* tokenlist) {
-    Token* token = tokenlist_top(tokenlist);
-    if (token->type != TOKEN_LBRACE) return parse_assignment_expr(tokenlist);
-    tokenlist_pop(tokenlist);
+    Ast* ast = NULL;
 
-    Ast* ast = ast_new(AST_INIT_LIST, 0);
-    token = tokenlist_top(tokenlist);
-    if (token->type == TOKEN_RBRACE) {
+    Token* token = tokenlist_top(tokenlist);
+    if (token->type != TOKEN_LBRACE) {
+        ast = parse_assignment_expr(tokenlist);
+    } else {
         tokenlist_pop(tokenlist);
-        return ast;
+        ast = parse_initializer_list(tokenlist);
+        assert_and_pop_token(tokenlist, TOKEN_RBRACE);
     }
+    return ast;
+}
+
+Ast* parse_initializer_list(TokenList* tokenlist) {
+    Ast* ast = ast_new(AST_INIT_LIST, 0);
+
+    Token* token = tokenlist_top(tokenlist);
+    if (token->type == TOKEN_RBRACE) return ast;
 
     ast_append_child(ast, parse_assignment_expr(tokenlist));
     while (1) {
         token = tokenlist_top(tokenlist);
-        if (token->type == TOKEN_RBRACE) {
-            tokenlist_pop(tokenlist);
-            break;
-        }
+        if (token->type == TOKEN_RBRACE) break;
         assert_and_pop_token(tokenlist, TOKEN_COMMA);
         ast_append_child(ast, parse_assignment_expr(tokenlist));
     }
@@ -760,9 +767,10 @@ Ast* parse_external_declaration(TokenList* tokenlist) {
     int pos_memo = tokenlist->pos;
     CType* ctype = parse_type_specifier(tokenlist);
     Ast* ast = parse_declarator(tokenlist, ctype);
+    Ast* ident = ast_nth_child(ast, 0);
 
     Token* token = tokenlist_top(tokenlist);
-    if (ast->type == AST_FUNC_DECL && token->type == TOKEN_LBRACE) {
+    if (ident->ctype->basic_ctype == CTYPE_FUNC && token->type == TOKEN_LBRACE) {
         return ast_new(AST_FUNC_DEF, 2, ast, parse_compound_stmt(tokenlist));
     }
     tokenlist->pos = pos_memo;

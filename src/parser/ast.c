@@ -247,12 +247,3 @@ int is_iteration_stmt(AstType type) {
 int is_jump_stmt(AstType type) {
     return type == AST_RETURN_STMT;
 }
-
-// declaration-ast-classifier
-int is_declaration_list(AstType type) {
-    return type == AST_DECL_LIST;
-}
-
-int is_declaration(AstType type) {
-    return type == AST_IDENT_DECL || type == AST_FUNC_DECL;
-}

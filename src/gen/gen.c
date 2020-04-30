@@ -485,7 +485,7 @@ void gen_compound_stmt_code(Ast* ast, LocalTable* local_table, CodeEnv* env) {
         case AST_COMP_STMT:
             for (i = 0; i < size; i++) {
                 Ast* child = ast_nth_child(ast, i);
-                if (is_declaration_list(child->type)) {
+                if (child->type == AST_DECL_LIST) {
                     gen_declaration_list_code(child, ast->local_table, env);
                 } else {
                     gen_stmt_code(child, ast->local_table, env);
@@ -633,20 +633,21 @@ void gen_declaration_list_code(Ast* ast, LocalTable* local_table, CodeEnv* env) 
 }
 
 void gen_declaration_code(Ast* ast, LocalTable* local_table, CodeEnv* env) {
-    switch(ast->type) {
-        case AST_IDENT_DECL:
+    Ast* ident = ast_nth_child(ast, 0);
+    switch(ident->ctype->basic_ctype) {
+        case CTYPE_CHAR:
+        case CTYPE_INT:
+        case CTYPE_PTR:
             if (ast->children->size == 1) break;
             gen_ident_initialization_code(ast, local_table, env);
             break;
-        case AST_ARRAY_DECL:
+        case CTYPE_ARRAY:
             if (ast->children->size == 1) break;
             gen_array_initialization_code(ast, local_table, env);
             break;
-        case AST_FUNC_DECL:
+        case CTYPE_FUNC:
             // Do Nothing
             break;
-        default:
-            assert_code_gen(0);
     }
 }
 
@@ -744,7 +745,7 @@ void gen_function_definition_code(Ast* ast, Vector* codes) {
     i = 0, size = block->children->size;
     for (i = 0; i < size; i++) {
         Ast* child = ast_nth_child(block, i);
-        if (is_declaration_list(child->type)) {
+        if (child->type == AST_DECL_LIST) {
             gen_declaration_list_code(child, block->local_table, env);
         } else {
             gen_stmt_code(child, block->local_table, env);

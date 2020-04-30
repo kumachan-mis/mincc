@@ -43,21 +43,20 @@ void revert_inplace_array_to_ptr_conversion(Ast* ast) {
 }
 
 void apply_inplace_function_declaration_conversion(Ast* ast) {
-    if (ast->type != AST_FUNC_DECL) return;
-
     Ast* func_ident = ast_nth_child(ast, 0);
-    Ast* param_list = ast_nth_child(ast, 1);
+    if (func_ident->ctype->basic_ctype != CTYPE_FUNC) return;
 
+    Ast* param_list = ast_nth_child(ast, 1);
     size_t i = 0, size = param_list->children->size;
     for (i = 0; i < size; i++) {
-        Ast* param_decl =  ast_nth_child(param_list, i);
-
         CType* param_ctype = (CType*)vector_at(func_ident->ctype->func->param_types, i);
-        CType* param_ident_ctype = ast_nth_child(param_decl, 0)->ctype;
-        switch (param_decl->type) {
-            case AST_IDENT_DECL:
+        CType* param_ident_ctype = ast_nth_child(ast_nth_child(param_list, i), 0)->ctype;
+        switch (param_ctype->basic_ctype) {
+            case CTYPE_CHAR:
+            case CTYPE_INT:
+            case CTYPE_PTR:
                 break;
-            case AST_ARRAY_DECL: {
+            case CTYPE_ARRAY: {
                 CType* ctype_ptr = NULL;
                 ctype_ptr = ctype_new_ptr(ctype_copy(param_ctype->array_of));
                 ctype_move(param_ctype, ctype_ptr);
@@ -65,15 +64,11 @@ void apply_inplace_function_declaration_conversion(Ast* ast) {
                 ctype_move(param_ident_ctype, ctype_ptr);
                 break;
             }
-            case AST_FUNC_DECL:
+            case CTYPE_FUNC:
                 fprintf(stderr, "Error: function as a parameter is not supported\n");
                 // TODO: function as a param
                 exit(0);
                 break;
-            default:
-                fprintf(stderr, "Error: cannot cast unknown type\n");
-                exit(0);
         }
-        param_decl->type = AST_IDENT_DECL;
     }
 }
