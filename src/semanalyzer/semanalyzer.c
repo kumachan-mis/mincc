@@ -120,16 +120,16 @@ void analyze_postfix_expr_semantics(Ast* ast, GlobalList* global_list, LocalTabl
     
             CType* ctype = local_table_get_ctype(local_table, callable->value_ident);
             if (ctype == NULL) ctype = global_list_get_function_ctype(global_list, callable->value_ident);
-            assert_semantics(arg_list->children->size == ctype->func->param_types->size);
+            assert_semantics(arg_list->children->size == ctype->func->param_list->size);
     
             size_t i = 0, num_args = arg_list->children->size;
             for (i = 0; i < num_args; i++) {
                 Ast* param = ast_nth_child(arg_list, i);
-                CType* param_ctype = vector_at(ctype->func->param_types, i);
+                CType* param_ctype = vector_at(ctype->func->param_list, i);
                 analyze_expr_semantics(param, global_list, local_table);
                 assert_semantics(ctype_compatible(param->ctype, param_ctype));
             }
-            ast->ctype = ctype_copy(ctype->func->return_type);
+            ast->ctype = ctype_copy(ctype->func->ret);
             break;
         }
         case AST_POST_INCR:

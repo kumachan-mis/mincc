@@ -690,14 +690,14 @@ Ast* parse_direct_declarator(TokenList* tokenlist, CType* ctype) {
             Ast* param_list = parse_param_list(tokenlist);
             assert_and_pop_token(tokenlist, TOKEN_RPAREN);
     
-            Vector* param_types = vector_new();
+            Vector* param_ctype_list = vector_new();
             size_t i = 0, size = param_list->children->size;
-            vector_reserve(param_types, size);
+            vector_reserve(param_list, size);
             for (i = 0; i < size; i++) {
                 Ast* param_ident = ast_nth_child(ast_nth_child(param_list, i), 0);
-                vector_push_back(param_types, ctype_copy(param_ident->ctype));
+                vector_push_back(param_ctype_list, ctype_copy(param_ident->ctype));
             }
-            ident->ctype = ctype_new_func(ctype, param_types);
+            ident->ctype = ctype_new_func(ctype, param_ctype_list);
             ast = ast_new(AST_DECL, 2, ident, param_list);
             break;
         }

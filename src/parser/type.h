@@ -27,8 +27,8 @@ typedef struct _CType {
 } CType;
 
 struct _CFuncType {
-    CType* return_type;
-    Vector* param_types;
+    CType* ret;
+    Vector* param_list;
 };
 
 
@@ -37,7 +37,7 @@ CType* ctype_new_char();
 CType* ctype_new_int();
 CType* ctype_new_ptr(CType* ptr_to);
 CType* ctype_new_array(CType* array_of, int len);
-CType* ctype_new_func(CType* return_type, Vector* param_types);
+CType* ctype_new_func(CType* ret, Vector* param_list);
 CType* ctype_copy(CType* ctype);
 void ctype_move(CType* dest, CType* src);
 int ctype_equals(CType* ctype_x, CType* ctype_y);

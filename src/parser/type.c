@@ -37,11 +37,11 @@ CType* ctype_new_array(CType* array_of, int len) {
     return ctype;
 }
 
-CType* ctype_new_func(CType* return_type, Vector* param_types) {
+CType* ctype_new_func(CType* ret, Vector* param_list) {
     CType* ctype = ctype_new(CTYPE_FUNC, 0);
     ctype->func = (CFuncType*)safe_malloc(sizeof(CFuncType));
-    ctype->func->return_type = return_type;
-    ctype->func->param_types = param_types;
+    ctype->func->ret = ret;
+    ctype->func->param_list = param_list;
     return ctype;
 }
 
@@ -62,13 +62,13 @@ CType* ctype_copy(CType* ctype) {
         case CTYPE_FUNC: {
             CFuncType* func = ctype->func;
             CFuncType* copied_func = (CFuncType*)safe_malloc(sizeof(CFuncType));
-            copied_func->return_type = ctype_copy(func->return_type);
-            copied_func->param_types = vector_new();
-            size_t i = 0, size = func->param_types->size;
-            vector_reserve(copied_func->param_types, size);
+            copied_func->ret = ctype_copy(func->ret);
+            copied_func->param_list = vector_new();
+            size_t i = 0, size = func->param_list->size;
+            vector_reserve(copied_func->param_list, size);
             for (i = 0; i < size; i++) {
-                CType* param_type = vector_at(func->param_types, i);
-                vector_push_back(copied_func->param_types, ctype_copy(param_type));
+                CType* param_type = vector_at(func->param_list, i);
+                vector_push_back(copied_func->param_list, ctype_copy(param_type));
             }
             copied_ctype->func = copied_func;
             break;
@@ -102,16 +102,16 @@ int ctype_equals(CType* ctype_x, CType* ctype_y) {
         case CTYPE_FUNC: {
             CFuncType* func_x = ctype_x->func;
             CFuncType* func_y = ctype_y->func;
-            if (func_x->param_types->size != func_y->param_types->size) {
+            if (func_x->param_list->size != func_y->param_list->size) {
                 return 0;
             }
-            if (!ctype_equals(func_x->return_type, func_y->return_type)) {
+            if (!ctype_equals(func_x->ret, func_y->ret)) {
                 return 0;
             }
-            size_t i = 0, size = func_x->param_types->size;
+            size_t i = 0, size = func_x->param_list->size;
             for (i = 0; i < size; i++) {
-                CType* param_type_x = vector_at(func_x->param_types, i);
-                CType* param_type_y = vector_at(func_y->param_types, i);
+                CType* param_type_x = vector_at(func_x->param_list, i);
+                CType* param_type_y = vector_at(func_y->param_list, i);
                 if (!ctype_equals(param_type_x, param_type_y)) {
                     return 0;
                 }
@@ -149,13 +149,13 @@ void ctype_delete_members(CType* ctype) {
             break;
         case CTYPE_FUNC: {
             CFuncType* func = ctype->func;
-            ctype_delete(func->return_type);
-            size_t i = 0, size = func->param_types->size;
+            ctype_delete(func->ret);
+            size_t i = 0, size = func->param_list->size;
             for (i = 0; i < size; i++) {
-                ctype_delete(vector_at(func->param_types, i));
-                func->param_types->data[i] = NULL;
+                ctype_delete(vector_at(func->param_list, i));
+                func->param_list->data[i] = NULL;
             }
-            vector_delete(func->param_types);
+            vector_delete(func->param_list);
             free(func);
             break;
         }
