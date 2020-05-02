@@ -27,8 +27,7 @@ void apply_inplace_array_to_ptr_conversion(Ast* ast) {
     )
         return;
 
-    Ast* array = ast_new_ident(AST_IDENT, str_new(ast->value_ident));
-    array->ctype = ctype_copy(ast->ctype);
+    Ast* array = ast_copy(ast);
     Ast* ptr = ast_new(AST_ARRAY_TO_PTR, 1, array);
     ptr->ctype = ctype_new_ptr(ctype_copy(array->ctype->array_of));
     ast_move(ast, ptr);

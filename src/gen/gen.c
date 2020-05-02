@@ -642,7 +642,7 @@ void gen_declaration_code(Ast* ast, LocalTable* local_table, CodeEnv* env) {
             gen_ident_initialization_code(ast, local_table, env);
             break;
         case CTYPE_ARRAY:
-            if (ast->children->size == 1) break;
+            if (ast->children->size == 2) break;
             gen_array_initialization_code(ast, local_table, env);
             break;
         case CTYPE_FUNC:
@@ -664,7 +664,7 @@ void gen_ident_initialization_code(Ast* ast, LocalTable* local_table, CodeEnv* e
 
 void gen_array_initialization_code(Ast* ast, LocalTable* local_table, CodeEnv* env) {
     Ast* ident = ast_nth_child(ast, 0);
-    Ast* init = ast_nth_child(ast, 1);
+    Ast* init = ast_nth_child(ast, 2);
 
     size_t i = 0, size = init->children->size;
     CType* array_of = ident->ctype->array_of;

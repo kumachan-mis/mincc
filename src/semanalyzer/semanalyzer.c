@@ -163,6 +163,7 @@ void analyze_unary_expr_semantics(Ast* ast, GlobalList* global_list, LocalTable*
         case AST_DEREF:
             assert_semantics(child->ctype->basic_ctype == CTYPE_PTR);
             ast->ctype = ctype_copy(child->ctype->ptr_to);
+            apply_inplace_array_to_ptr_conversion(ast);
             break;
         case AST_POSI:
         case AST_NEGA:
@@ -443,11 +444,11 @@ void analyze_global_declaration_semantics(Ast* ast, GlobalList* global_list) {
             break;
         case CTYPE_ARRAY:
             global_list_insert_copy(global_list, ident->value_ident, ident->ctype);
-            if (ast->children->size == 1) {
+            if (ast->children->size == 2) {
                 global_list_tentatively_define(global_list, ident->value_ident);
                 break;
             }
-            init = ast_nth_child(ast, 1);
+            init = ast_nth_child(ast, 2);
             if (init->type == AST_IMM_STR) {
                 init->ctype = ctype_new_array(ctype_new_char(), strlen(init->value_str) + 1);
                 assert_semantics(string_initializer_is_valid(init, ident->ctype));
@@ -492,8 +493,8 @@ void analyze_local_declaration_semantics(Ast* ast, GlobalList* global_list, Loca
         case CTYPE_ARRAY:
             local_table_insert_copy(local_table, ident->value_ident, ident->ctype);
             local_table_define(local_table, ident->value_ident);
-            if (ast->children->size == 1) break;
-            init = ast_nth_child(ast, 1);
+            if (ast->children->size == 2) break;
+            init = ast_nth_child(ast, 2);
             if (init->type == AST_IMM_STR) {
                 init->ctype = ctype_new_array(ctype_new_char(), strlen(init->value_str) + 1);
                 assert_semantics(string_initializer_is_valid(init, ident->ctype));
@@ -553,6 +554,8 @@ void analyze_function_definition_semantics(Ast* ast, GlobalList* global_list) {
 
 // initializer-utils
 int array_initializer_is_valid(Ast* init, CType* array_ctype) {
+    if (init->type != AST_INIT_LIST) return 0;
+
     int num_elements = array_ctype->size / array_ctype->array_of->size;
     int init_list_size = init->children->size;
     if (num_elements < init_list_size) return 0;
@@ -569,6 +572,7 @@ int array_initializer_is_valid(Ast* init, CType* array_ctype) {
 }
 
 int string_initializer_is_valid(Ast* init, CType* array_ctype) {
+    if (init->type != AST_IMM_STR) return 0;
     int num_elements = array_ctype->size / array_ctype->array_of->size;
     int init_strlen = strlen(init->value_str);
     return num_elements >= init_strlen + 1 &&
