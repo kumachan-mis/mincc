@@ -45,6 +45,7 @@ void gen_array_initialization_code(Ast* ast, LocalTable* local_table, CodeEnv* e
 
 // external-declaration-generator
 void gen_global_variable_code(GlobalVariable* gloval_variable, Vector* codes);
+void gen_global_data_code(GlobalData* global_data, Vector* codes);
 void gen_function_definition_code(Ast* ast, Vector* codes);
 
 // utils
@@ -696,31 +697,37 @@ void gen_global_variable_code(GlobalVariable* gloval_variable, Vector* codes) {
     append_code(codes, "\t.data\n");
     append_code(codes, "\t.align %d\n", align);
     append_code(codes, "_%s:\n", variable_name);
+    gen_global_data_code(gloval_variable->global_data, codes);
+}
 
-    GlobalData* global_data = gloval_variable->global_data;
-    size_t i = 0, size = global_data->inner_vector->size;
-    for (i = 0; i < size; i++) {
-        GlobalDatum* datum = global_data_nth_datum(global_data, i);
-        char* size_label = NULL;
-        switch (datum->type) {
-            case GBL_TYPE_INTEGER:
-                size_label = create_size_label(datum->size);
-                append_code(codes, "\t%s %d\n", size_label, datum->value_int);
-                free(size_label);
-                break;
-            case GBL_TYPE_ADDR:
-                size_label = create_size_label(datum->size);
-                append_code(codes, "\t%s _%s\n", size_label, datum->address_of);
-                free(size_label);
-                break;
-            case GBL_TYPE_STR:
-                append_code(codes, "\t.ascii \"%s\\0\"\n", datum->value_str);
-                break;
+void gen_global_data_code(GlobalData* global_data, Vector* codes) {
+     switch (global_data->type) {
+        case GBL_TYPE_INTEGER: {
+            char* size_label = create_size_label(global_data->size);
+            append_code(codes, "\t%s %d\n", size_label, global_data->value_int);
+            free(size_label);
+            break;
         }
-    }
-
-    if (global_data->zero_size > 0) {
-        append_code(codes, "\t.zero %d\n", global_data->zero_size);
+        case GBL_TYPE_ADDR: {
+            char* size_label = create_size_label(global_data->size);
+            append_code(codes, "\t%s _%s\n", size_label, global_data->address_of);
+            free(size_label);
+            break;
+        }
+        case GBL_TYPE_STR:
+            append_code(codes, "\t.ascii \"%s\\0\"\n", global_data->value_str);
+            break;
+        case GBL_TYPE_LIST: {
+            size_t i = 0, size = global_data->children->size - 1;
+            for (i = 0; i < size; i++) {
+                GlobalData* child = global_data_nth_child(global_data, i);
+                gen_global_data_code(child, codes);
+            }
+            GlobalData* zero = global_data_nth_child(global_data, size);
+            assert_code_gen(zero->type == GBL_TYPE_INTEGER && zero->value_int == 0);
+            if (zero->size > 0) append_code(codes, "\t.zero %d\n",zero->size);
+            break;
+        }
     }
 }
 

@@ -16,8 +16,8 @@ void global_variable_delete(GlobalVariable* global_variable);
 // assertion
 void global_redefinition_error(char* symbol_name);
 void global_conflicting_type_error(char* symbol_name);
-void global_not_function_error(char* symbol_name);
 void str_label_limit_error();
+void assert_global_list(int condition);
 
 
 // global-list
@@ -68,8 +68,21 @@ int global_list_exists(GlobalList* global_list, char* symbol_name) {
 void global_list_tentatively_define(GlobalList* global_list, char* symbol_name) {
     GlobalVariable* global_variable = global_list_find(global_list, symbol_name);
     if (global_variable == NULL || global_variable->status != GLOBAL_SYMBOL_DECL) return;
-    global_variable->global_data = global_data_new();
-    global_data_set_zero_size(global_variable->global_data, global_variable->ctype->size);
+
+    GlobalData* zero = global_data_new_integer(0, global_variable->ctype->size);
+    switch (global_variable->ctype->basic_ctype) {
+        case CTYPE_CHAR:
+        case CTYPE_INT:
+        case CTYPE_PTR:
+            global_variable->global_data = zero;
+            break;
+        case CTYPE_ARRAY:
+            global_variable->global_data = global_data_new_list();
+            global_data_append_child(global_variable->global_data, zero);
+            break;
+        case CTYPE_FUNC:
+            assert_global_list(0);
+    }
     global_variable->status = GLOBAL_SYMBOL_TENT_DEF;
 }
 
@@ -96,7 +109,7 @@ CType* global_list_get_ctype(GlobalList* global_list, char* symbol_name) {
 CType* global_list_get_function_ctype(GlobalList* global_list, char* symbol_name) {
     GlobalVariable* global_variable = global_list_find(global_list, symbol_name);
     if (global_variable != NULL) {
-        if (global_variable->ctype->basic_ctype != CTYPE_FUNC) global_not_function_error(symbol_name);
+        assert_global_list(global_variable->ctype->basic_ctype == CTYPE_FUNC);
         return global_variable->ctype;
     }
     fprintf(stderr, "Warning: no declaration of function '%s'\n", symbol_name);
@@ -158,65 +171,72 @@ void global_variable_delete(GlobalVariable* global_variable) {
 }
 
 // global-data
-GlobalData* global_data_new() {
-    GlobalData* global_data = (GlobalData*)safe_malloc(sizeof(GlobalData));
-    global_data->inner_vector = vector_new();
-    global_data->zero_size = 0;
-    return global_data;
+GlobalData* global_data_new_list() {
+    GlobalData* data = (GlobalData*)safe_malloc(sizeof(GlobalData));
+    data->type = GBL_TYPE_LIST;
+    data->size = 0;
+    data->children = vector_new();
+    return data;
 }
 
-void global_data_append_integer(GlobalData* global_data, int value_int, int size) {
-    GlobalDatum* datum = (GlobalDatum*)safe_malloc(sizeof(GlobalDatum));
-    datum->type = GBL_TYPE_INTEGER;
-    datum->size = size;
-    datum->value_int = value_int;
-    vector_push_back(global_data->inner_vector, datum);
+GlobalData* global_data_new_integer(int value_int, int size) {
+    GlobalData* data = (GlobalData*)safe_malloc(sizeof(GlobalData));
+    data->type = GBL_TYPE_INTEGER;
+    data->size = size;
+    data->value_int = value_int;
+    return data;
 }
 
-void global_data_append_address(GlobalData* global_data, char* address_of) {
-    GlobalDatum* datum = (GlobalDatum*)safe_malloc(sizeof(GlobalDatum));
-    datum->type = GBL_TYPE_ADDR;
-    datum->size = 8;
-    datum->address_of = address_of;
-    vector_push_back(global_data->inner_vector, datum);
+GlobalData* global_data_new_address(char* address_of) {
+    GlobalData* data = (GlobalData*)safe_malloc(sizeof(GlobalData));
+    data->type = GBL_TYPE_ADDR;
+    data->size = 8;
+    data->address_of = address_of;
+   return data;
 }
 
-void global_data_append_string(GlobalData* global_data, char* value_str) {
-    GlobalDatum* datum = (GlobalDatum*)safe_malloc(sizeof(GlobalDatum));
-    datum->type = GBL_TYPE_STR;
-    datum->size = strlen(value_str) + 1;
-    datum->value_str = value_str;
-    vector_push_back(global_data->inner_vector, datum);
+GlobalData* global_data_new_string(char* value_str) {
+    GlobalData* data = (GlobalData*)safe_malloc(sizeof(GlobalData));
+    data->type = GBL_TYPE_STR;
+    data->size = strlen(value_str) + 1;
+    data->value_str = value_str;
+    return data;
 }
 
-GlobalDatum* global_data_nth_datum(GlobalData* global_data, size_t n) {
-    return (GlobalDatum*)vector_at(global_data->inner_vector, n);
+GlobalData* global_data_nth_child(GlobalData* global_data, size_t n) {
+    assert_global_list(global_data->type == GBL_TYPE_LIST);
+    return (GlobalData*)vector_at(global_data->children, n);
 }
 
-void global_data_set_zero_size(GlobalData* global_data, int zero_size) {
-    global_data->zero_size = zero_size;
+void global_data_append_child(GlobalData* global_data, GlobalData* child) {
+    assert_global_list(global_data->type == GBL_TYPE_LIST);
+    global_data->size += child->size;
+    vector_push_back(global_data->children, child);
 }
 
 void global_data_delete(GlobalData* global_data) {
-     if (global_data == NULL) return;
-    
-    size_t i = 0, size = global_data->inner_vector->size;
-    for (i = 0; i < size; i++) {
-        GlobalDatum* datum = (GlobalDatum*)vector_at(global_data->inner_vector, i);
-        switch (datum->type) {
-            case GBL_TYPE_INTEGER:
-                break;
-            case GBL_TYPE_ADDR:
-                free(datum->address_of);
-                break;
-            case GBL_TYPE_STR:
-                free(datum->value_str);
-                break;
+    if (global_data == NULL) return;
+
+    switch (global_data->type) {
+        case GBL_TYPE_INTEGER:
+            break;
+        case GBL_TYPE_ADDR:
+            free(global_data->address_of);
+            break;
+        case GBL_TYPE_STR:
+            free(global_data->value_str);
+            break;
+        case GBL_TYPE_LIST: {
+            size_t i = 0, size = global_data->children->size;
+            for (i = 0; i < size; i++) {
+                GlobalData* child = global_data_nth_child(global_data, i);
+                global_data_delete(child);
+                global_data->children->data[i] = NULL;
+            }
+            vector_delete(global_data->children);
+            break;
         }
-        free(datum);
-        global_data->inner_vector->data[i] = NULL;
     }
-    vector_delete(global_data->inner_vector);
     free(global_data);
 }
 
@@ -231,12 +251,13 @@ void global_conflicting_type_error(char* symbol_name) {
     exit(1);
 }
 
-void global_not_function_error(char* symbol_name) {
-    fprintf(stderr, "Error: '%s' is not a function\n", symbol_name);
+void str_label_limit_error() {
+    fprintf(stderr, "Error: cannot create new label\n");
     exit(1);
 }
 
-void str_label_limit_error() {
-    fprintf(stderr, "Error: cannot create new label\n");
+void assert_global_list(int condition) {
+    if (condition) return;
+    fprintf(stderr, "Error: assertion in global list failed\n");
     exit(1);
 }

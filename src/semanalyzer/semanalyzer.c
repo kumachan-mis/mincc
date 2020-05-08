@@ -42,11 +42,7 @@ void analyze_function_definition_semantics(Ast* ast, GlobalList* global_list);
 // initializer-utils
 int array_initializer_is_valid(Ast* init, CType* array_ctype);
 int string_initializer_is_valid(Ast* init, CType* array_ctype);
-//   global-initializer-utils
-GlobalData* global_initializer_to_data(Ast* init, CType* ctype, GlobalList* global_list);
-void append_initializer_list_data(Ast* init, CType* ctype, GlobalData* global_data);
-void append_const_expr_data(Ast* init, CType* ctype, GlobalData* global_data);
-//   local-initializer-utils
+GlobalData* global_initializer_to_data(Ast* init, CType* ctype);
 void string_to_array_initializer(Ast* init);
 void array_initializer_fill_zeros(Ast* init, CType* array_ctype);
 
@@ -90,7 +86,7 @@ void analyze_primary_expr_semantics(Ast* ast, GlobalList* global_list, LocalTabl
             ident->ctype = ctype_new_array(ctype_new_char(), strlen(ast->value_str) + 1);
 
             global_list_insert_copy(global_list, ident->value_ident, ident->ctype);
-            GlobalData* global_data = global_initializer_to_data(ast, ident->ctype, global_list);
+            GlobalData* global_data = global_initializer_to_data(ast, ident->ctype);
             global_list_define(global_list, ident->value_ident, global_data);
 
             ast_move(ast, ident);
@@ -439,7 +435,7 @@ void analyze_global_declaration_semantics(Ast* ast, GlobalList* global_list) {
             init = ast_nth_child(ast, 1);
             analyze_expr_semantics(init, global_list, empty_table);
             assert_semantics(ctype_compatible(ident->ctype, init->ctype));
-            global_data = global_initializer_to_data(init, ident->ctype, global_list);
+            global_data = global_initializer_to_data(init, ident->ctype);
             global_list_define(global_list, ident->value_ident, global_data);
             break;
         case CTYPE_ARRAY:
@@ -456,7 +452,7 @@ void analyze_global_declaration_semantics(Ast* ast, GlobalList* global_list) {
                 analyze_initializer_list_semantics(init, global_list, empty_table);
                 assert_semantics(array_initializer_is_valid(init, ident->ctype));
             }
-            global_data = global_initializer_to_data(init, ident->ctype, global_list);
+            global_data = global_initializer_to_data(init, ident->ctype);
             global_list_define(global_list, ident->value_ident, global_data);
             break;
         case CTYPE_FUNC:
@@ -579,65 +575,41 @@ int string_initializer_is_valid(Ast* init, CType* array_ctype) {
            array_ctype->array_of->basic_ctype == CTYPE_CHAR;
 }
 
-//   global-initializer-utils
-GlobalData* global_initializer_to_data(Ast* init, CType* ctype, GlobalList* global_list) {
-    GlobalData* global_data = global_data_new();
-    GlobalDatum* datum = NULL;
-    int zero_size = 0;
+GlobalData* global_initializer_to_data(Ast* init, CType* ctype) {
+    GlobalData* global_data = NULL;
+
     switch (init->type) {
-        case AST_INIT_LIST: {
-            append_initializer_list_data(init, ctype, global_data);
-            zero_size = ctype->size;
-            size_t i = 0, size = global_data->inner_vector->size;
-            for (i = 0; i < size; i++) {
-                datum = global_data_nth_datum(global_data, i);
-                zero_size -= datum->size;
-            }
+        case AST_IMM_INT:
+            global_data = global_data_new_integer(init->value_int, ctype->size);
+            break;
+        case AST_ADDR: 
+        case AST_ARRAY_TO_PTR: {
+            Ast* address_of = ast_nth_child(init, 0);
+            assert_semantics(address_of->type == AST_IDENT);
+            global_data = global_data_new_address(str_new(address_of->value_ident));
             break;
         }
         case AST_IMM_STR:
-            global_data_append_string(global_data, str_new(init->value_str));
-            datum = global_data_nth_datum(global_data, 0);
-            zero_size = ctype->size - datum->size;
+            global_data = global_data_new_string(str_new(init->value_str));
             break;
+        case AST_INIT_LIST: {
+            global_data = global_data_new_list();
+            GlobalData* child = NULL;
+            size_t i = 0, size = init->children->size;
+            for (i = 0; i < size; i++) {
+                child = global_initializer_to_data(ast_nth_child(init, i), ctype->array_of);
+                global_data_append_child(global_data, child);
+            }
+            child = global_data_new_integer(0, ctype->size - global_data->size);
+            global_data_append_child(global_data,  child);
+            break;
+        }
         default:
-            append_const_expr_data(init, ctype, global_data);
-            datum = global_data_nth_datum(global_data, 0);
-            zero_size = ctype->size - datum->size;
-            break;
+            assert_semantics(0);
     }
-    global_data_set_zero_size(global_data, zero_size);
     return global_data;
 }
 
-void append_initializer_list_data(Ast* init, CType* ctype, GlobalData* global_data) {
-    size_t i = 0, size = init->children->size;
-    if (ctype->basic_ctype == CTYPE_ARRAY) {
-        for (i = 0; i < size; i++) {
-            append_const_expr_data(ast_nth_child(init, i), ctype->array_of, global_data);
-        }
-    } else {
-        assert_semantics(0);
-    } 
-}
-
-void append_const_expr_data(Ast* init, CType* ctype, GlobalData* global_data) {
-    if (init->type == AST_IMM_INT) {
-        global_data_append_integer(global_data, init->value_int, ctype->size);
-        return;
-    }
-    Ast* address_of = ast_nth_child(init, 0);
-    if (
-        (init->type == AST_ADDR || init->type == AST_ARRAY_TO_PTR) &&
-        address_of->type == AST_IDENT
-    ) {
-        global_data_append_address(global_data, str_new(address_of->value_ident));
-        return;
-    }
-    assert_semantics(0);
-}
-
-//   local-initializer-utils
 void string_to_array_initializer(Ast* init) {
     char* value_str = init->value_str;
     init->value_str = NULL;
