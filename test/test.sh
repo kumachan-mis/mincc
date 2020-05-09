@@ -1058,6 +1058,6 @@ int main() {
     put_str(g[0]);
     put_str(g[1]);
     return 0;
-}"                           "l0\$local1\$global0\$g1"
+}"                           "l0\$local1\$global0\$g1\$"
 
 teardown_test
