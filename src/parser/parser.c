@@ -560,34 +560,40 @@ Ast* parse_jump_stmt(TokenList* tokenlist) {
     Token* token = tokenlist_top(tokenlist);
     tokenlist_pop(tokenlist);
     switch (token->type) {
+        case TOKEN_CONTINUE:
+            ast = ast_new(AST_CONTINUE_STMT, 0);
+            break;
+        case TOKEN_BREAK:
+            ast = ast_new(AST_BREAK_STMT, 0);
+            break;
         case TOKEN_RETURN:
-            ast = ast_new(AST_RETURN_STMT, 0);
-            ast_append_child(ast, parse_expr(tokenlist));
-            assert_and_pop_token(tokenlist, TOKEN_SEMICOLON);
+            ast = ast_new(AST_RETURN_STMT, 1, parse_expr(tokenlist));
             break;
         default:
             assert_syntax(0);
     }
+    assert_and_pop_token(tokenlist, TOKEN_SEMICOLON);
     return ast;
 }
 
 Ast* parse_stmt(TokenList* tokenlist) {
     Token* token = tokenlist_top(tokenlist);
-    TokenType type = token->type;
-    if (type == TOKEN_LBRACE) {
-        return parse_compound_stmt(tokenlist);
-    } else if (type == TOKEN_IF) {
-        return parse_selection_stmt(tokenlist);
-    } else if (
-        type == TOKEN_WHILE ||
-        type == TOKEN_DO ||
-        type == TOKEN_FOR
-    ) {
-        return parse_iteration_stmt(tokenlist);
-    } else if (type == TOKEN_RETURN) {
-        return parse_jump_stmt(tokenlist);
-    } else {
-        return parse_expr_stmt(tokenlist);
+
+    switch (token->type) {
+        case TOKEN_LBRACE:
+            return parse_compound_stmt(tokenlist);
+        case TOKEN_IF:
+            return parse_selection_stmt(tokenlist);
+        case TOKEN_WHILE:
+        case TOKEN_DO:
+        case TOKEN_FOR:
+            return parse_iteration_stmt(tokenlist);
+        case TOKEN_CONTINUE:
+        case TOKEN_BREAK:
+        case TOKEN_RETURN:
+            return  parse_jump_stmt(tokenlist);
+        default:
+            return parse_expr_stmt(tokenlist);
     }
 }
 

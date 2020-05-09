@@ -564,27 +564,38 @@ void gen_selection_stmt_code(Ast* ast, LocalTable* local_table, CodeEnv* env) {
 
 void gen_iteration_stmt_code(Ast* ast, LocalTable* local_table, CodeEnv* env) {
     Ast* child = NULL;
+
+    char* old_continue_label = env->continue_label;
+    char* old_break_label = env->break_label;
+
     char* entry_label = codenv_create_label(env);
+    char* continue_label = codenv_create_label(env);
     char* exit_label = codenv_create_label(env);
+
+    env->continue_label = continue_label;
+    env->break_label = exit_label;
 
     switch (ast->type) {
         case AST_WHILE_STMT: 
-            append_code(env->codes, ".L%s:\n",   entry_label);
+            append_code(env->codes, ".L%s:\n", entry_label);
+            append_code(env->codes, ".L%s:\n", continue_label);
             gen_expr_code(ast_nth_child(ast, 0), local_table, env);
             append_code(env->codes, "\tpop %%rax\n");
             append_code(env->codes, "\tcmp $0, %%rax\n");
             append_code(env->codes, "\tje .L%s\n", exit_label);
             gen_stmt_code(ast_nth_child(ast, 1), local_table, env);
             append_code(env->codes, "\tjmp .L%s\n", entry_label);
-            append_code(env->codes, ".L%s:\n",   exit_label);
+            append_code(env->codes, ".L%s:\n", exit_label);
             break;
         case AST_DOWHILE_STMT:
-            append_code(env->codes, ".L%s:\n",   entry_label);
+            append_code(env->codes, ".L%s:\n", entry_label);
             gen_stmt_code(ast_nth_child(ast, 0), local_table, env);
+            append_code(env->codes, ".L%s:\n", continue_label);
             gen_expr_code(ast_nth_child(ast, 1), local_table, env);
             append_code(env->codes, "\tpop %%rax\n");
             append_code(env->codes, "\tcmp $0, %%rax\n");
             append_code(env->codes, "\tjne .L%s\n", entry_label);
+            append_code(env->codes, ".L%s:\n", exit_label);
             break;
         case AST_FOR_STMT:
             child = ast_nth_child(ast, 0);
@@ -592,7 +603,7 @@ void gen_iteration_stmt_code(Ast* ast, LocalTable* local_table, CodeEnv* env) {
             if (!is_null_expr(child->type)) {
                 append_code(env->codes, "\tadd $8, %%rsp\n");
             }
-            append_code(env->codes, ".L%s:\n",   entry_label);
+            append_code(env->codes, ".L%s:\n", entry_label);
             child = ast_nth_child(ast, 1);
             gen_expr_code(child, local_table, env);
             if (!is_null_expr(child->type)) {
@@ -601,24 +612,38 @@ void gen_iteration_stmt_code(Ast* ast, LocalTable* local_table, CodeEnv* env) {
                 append_code(env->codes, "\tje .L%s\n", exit_label);
             }
             gen_stmt_code(ast_nth_child(ast, 3), local_table, env);
+            append_code(env->codes, ".L%s:\n", continue_label);
             child = ast_nth_child(ast, 2);
             gen_expr_code(child, local_table, env);
             if (!is_null_expr(child->type)) {
                 append_code(env->codes, "\tadd $8, %%rsp\n");
             }
             append_code(env->codes, "\tjmp .L%s\n", entry_label);
-            append_code(env->codes, ".L%s:\n",   exit_label);
+            append_code(env->codes, ".L%s:\n", exit_label);
             break;
         default:
             assert_code_gen(0);
             break;
     }
+
+    env->continue_label = old_continue_label;
+    env->break_label = old_break_label;
+
     free(entry_label);
+    free(continue_label);
     free(exit_label);
 }
 
 void gen_jump_stmt_code(Ast* ast, LocalTable* local_table, CodeEnv* env) {
     switch (ast->type) {
+        case AST_CONTINUE_STMT:
+            assert_code_gen(env->continue_label != NULL);
+            append_code(env->codes, "\tjmp .L%s\n", env->continue_label);
+            break;
+        case AST_BREAK_STMT:
+            assert_code_gen(env->break_label != NULL);
+            append_code(env->codes, "\tjmp .L%s\n", env->break_label);
+            break;
         case AST_RETURN_STMT:
             gen_expr_code(ast_nth_child(ast, 0), local_table, env);
             append_code(env->codes, "\tpop %%rax\n");

@@ -8,6 +8,8 @@
 typedef struct {
     char* funcname;
     int num_labels;
+    char* continue_label;
+    char* break_label;
     Vector* codes;
 } CodeEnv;
 

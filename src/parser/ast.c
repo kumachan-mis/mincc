@@ -248,5 +248,6 @@ int is_iteration_stmt(AstType type) {
 }
 
 int is_jump_stmt(AstType type) {
-    return type == AST_RETURN_STMT;
+    return type == AST_CONTINUE_STMT || type == AST_BREAK_STMT ||
+           type == AST_RETURN_STMT;
 }

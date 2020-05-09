@@ -8,11 +8,7 @@
 
 
 // lex
-Token* read_token(
-    FileBuffer* fbuffer,
-    ReservedTokenList* keyword_list,
-    ReservedTokenList* punct_list
-);
+Token* read_token(FileBuffer* fbuffer, ReservedTokenList* keyword_list, ReservedTokenList* punct_list);
 Token* read_token_keyword_or_ident(FileBuffer* fbuffer, ReservedTokenList* keyword_list);
 Token* read_token_char(FileBuffer* fbuffer);
 Token* read_token_int(FileBuffer* fbuffer);

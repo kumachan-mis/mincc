@@ -17,6 +17,8 @@ CodeEnv* codenv_new(char* funcname) {
     CodeEnv* env = (CodeEnv*)safe_malloc(sizeof(CodeEnv));
     env->funcname = funcname;
     env->num_labels = 0;
+    env->continue_label = NULL;
+    env->break_label = NULL;
     env->codes = vector_new();
     return env;
 }
@@ -36,6 +38,8 @@ void codenv_delete(CodeEnv* env) {
     if (env == NULL) return;
 
     free(env->funcname);
+    free(env->continue_label);
+    free(env->break_label);
     vector_delete(env->codes);
     free(env);
 }

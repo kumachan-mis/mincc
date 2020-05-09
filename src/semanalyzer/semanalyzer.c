@@ -403,6 +403,10 @@ void analyze_iteration_stmt_semantics(Ast* ast, GlobalList* global_list, LocalTa
 
 void analyze_jump_stmt_semantics(Ast* ast, GlobalList* global_list, LocalTable* local_table) {
     switch (ast->type) {
+        case AST_CONTINUE_STMT:
+            break;
+        case AST_BREAK_STMT:
+            break;
         case AST_RETURN_STMT:
             analyze_expr_semantics(ast_nth_child(ast, 0), global_list, local_table);
             break;
