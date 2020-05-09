@@ -616,6 +616,88 @@ int main() {
 }"                          "0\$1\$3\$6\$10\$15\$"
 
 test_mincc "
+int put_int(int n);
+
+int main() {
+    int i = 0;
+    while(i < 10) {
+        if (i % 2 == 1) {
+            i++;
+            continue;
+        }
+        put_int(i);
+        i++;
+    }
+    return 0;
+}"                          "0\$2\$4\$6\$8\$"
+
+test_mincc "
+int put_int(int n);
+
+int main() {
+    int i = 0;
+    do {
+        if (i % 2 == 1) {
+            i++;
+            continue;
+        }
+        put_int(i);
+        i++;
+    } while (i < 10);
+    return 0;
+}"                          "0\$2\$4\$6\$8\$"
+
+test_mincc "
+int put_int(int n);
+
+int main() {
+    int i = 0;
+    for (i = 0; i < 10; i++) {
+        if (i % 2 == 1) continue;
+        put_int(i);
+    }
+    return 0;
+}"                          "0\$2\$4\$6\$8\$"
+
+test_mincc "
+int put_int(int n);
+
+int main() {
+    int x = 5;
+    while (1) {
+        put_int(x);
+        if (x == 0) break;
+        x--;
+    }
+    return 0;
+}"                          "5\$4\$3\$2\$1\$0\$"
+
+test_mincc "
+int put_int(int n);
+
+int main() {
+    int x = 5;
+    do {
+        put_int(x);
+        if (x == 0) break;
+        x--;
+    } while (1);
+    return 0;
+}"                          "5\$4\$3\$2\$1\$0\$"
+
+test_mincc "
+int put_int(int n);
+
+int main() {
+    int x;
+    for(x = 5;;x--) {
+        put_int(x);
+        if (x == 0) break;
+    }
+    return 0;
+}"                          "5\$4\$3\$2\$1\$0\$"
+
+test_mincc "
 int put_int(int x);
 int five();
 int six() { return 6; }

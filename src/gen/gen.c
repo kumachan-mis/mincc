@@ -577,24 +577,25 @@ void gen_iteration_stmt_code(Ast* ast, LocalTable* local_table, CodeEnv* env) {
 
     switch (ast->type) {
         case AST_WHILE_STMT: 
-            append_code(env->codes, ".L%s:\n",   entry_label);
-            append_code(env->codes, ".L%s:\n",   continue_label);
+            append_code(env->codes, ".L%s:\n", entry_label);
+            append_code(env->codes, ".L%s:\n", continue_label);
             gen_expr_code(ast_nth_child(ast, 0), local_table, env);
             append_code(env->codes, "\tpop %%rax\n");
             append_code(env->codes, "\tcmp $0, %%rax\n");
             append_code(env->codes, "\tje .L%s\n", exit_label);
             gen_stmt_code(ast_nth_child(ast, 1), local_table, env);
             append_code(env->codes, "\tjmp .L%s\n", entry_label);
-            append_code(env->codes, ".L%s:\n",   exit_label);
+            append_code(env->codes, ".L%s:\n", exit_label);
             break;
         case AST_DOWHILE_STMT:
-            append_code(env->codes, ".L%s:\n",   entry_label);
+            append_code(env->codes, ".L%s:\n", entry_label);
             gen_stmt_code(ast_nth_child(ast, 0), local_table, env);
-            append_code(env->codes, ".L%s:\n",   continue_label);
+            append_code(env->codes, ".L%s:\n", continue_label);
             gen_expr_code(ast_nth_child(ast, 1), local_table, env);
             append_code(env->codes, "\tpop %%rax\n");
             append_code(env->codes, "\tcmp $0, %%rax\n");
             append_code(env->codes, "\tjne .L%s\n", entry_label);
+            append_code(env->codes, ".L%s:\n", exit_label);
             break;
         case AST_FOR_STMT:
             child = ast_nth_child(ast, 0);
@@ -602,7 +603,7 @@ void gen_iteration_stmt_code(Ast* ast, LocalTable* local_table, CodeEnv* env) {
             if (!is_null_expr(child->type)) {
                 append_code(env->codes, "\tadd $8, %%rsp\n");
             }
-            append_code(env->codes, ".L%s:\n",   entry_label);
+            append_code(env->codes, ".L%s:\n", entry_label);
             child = ast_nth_child(ast, 1);
             gen_expr_code(child, local_table, env);
             if (!is_null_expr(child->type)) {
@@ -611,14 +612,14 @@ void gen_iteration_stmt_code(Ast* ast, LocalTable* local_table, CodeEnv* env) {
                 append_code(env->codes, "\tje .L%s\n", exit_label);
             }
             gen_stmt_code(ast_nth_child(ast, 3), local_table, env);
-            append_code(env->codes, ".L%s:\n",   continue_label);
+            append_code(env->codes, ".L%s:\n", continue_label);
             child = ast_nth_child(ast, 2);
             gen_expr_code(child, local_table, env);
             if (!is_null_expr(child->type)) {
                 append_code(env->codes, "\tadd $8, %%rsp\n");
             }
             append_code(env->codes, "\tjmp .L%s\n", entry_label);
-            append_code(env->codes, ".L%s:\n",   exit_label);
+            append_code(env->codes, ".L%s:\n", exit_label);
             break;
         default:
             assert_code_gen(0);
