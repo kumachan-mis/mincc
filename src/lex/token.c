@@ -5,12 +5,7 @@
 
 
 // reserved-token-list
-void reserved_token_list_append(
-    ReservedTokenList* reserved_token_list,
-    char* value_token,
-    TokenType type
-);
-
+void reserved_token_list_append(ReservedTokenList* reserved_token_list, char* value_token, TokenType type);
 
 // tokenlist
 TokenList* tokenlist_new() {
@@ -142,14 +137,16 @@ ReservedTokenList* reserved_token_list_new_keywords() {
     ReservedTokenList* keyword_list = vector_new();
     vector_reserve(keyword_list, size);
 
-    reserved_token_list_append(keyword_list, "char",   TOKEN_CHAR);
-    reserved_token_list_append(keyword_list, "do",     TOKEN_DO);
-    reserved_token_list_append(keyword_list, "else",   TOKEN_ELSE);
-    reserved_token_list_append(keyword_list, "for",    TOKEN_FOR);
-    reserved_token_list_append(keyword_list, "if",     TOKEN_IF);
-    reserved_token_list_append(keyword_list, "int",    TOKEN_INT);
-    reserved_token_list_append(keyword_list, "return", TOKEN_RETURN);
-    reserved_token_list_append(keyword_list, "while",  TOKEN_WHILE);
+    reserved_token_list_append(keyword_list, "break",    TOKEN_BREAK);
+    reserved_token_list_append(keyword_list, "char",     TOKEN_CHAR);
+    reserved_token_list_append(keyword_list, "continue", TOKEN_CONTINUE);
+    reserved_token_list_append(keyword_list, "do",       TOKEN_DO);
+    reserved_token_list_append(keyword_list, "else",     TOKEN_ELSE);
+    reserved_token_list_append(keyword_list, "for",      TOKEN_FOR);
+    reserved_token_list_append(keyword_list, "if",       TOKEN_IF);
+    reserved_token_list_append(keyword_list, "int",      TOKEN_INT);
+    reserved_token_list_append(keyword_list, "return",   TOKEN_RETURN);
+    reserved_token_list_append(keyword_list, "while",    TOKEN_WHILE);
 
     return keyword_list;
 }

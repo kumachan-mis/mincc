@@ -70,6 +70,8 @@ typedef enum {
     AST_DOWHILE_STMT,
     AST_FOR_STMT,
     // jump-statement
+    AST_CONTINUE_STMT,
+    AST_BREAK_STMT,
     AST_RETURN_STMT,
 
     // declaration

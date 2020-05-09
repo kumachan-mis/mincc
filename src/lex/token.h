@@ -7,7 +7,9 @@
 
 typedef enum {
     // keyword
+    TOKEN_BREAK,
     TOKEN_CHAR,
+    TOKEN_CONTINUE,
     TOKEN_DO,
     TOKEN_ELSE,
     TOKEN_FOR,
