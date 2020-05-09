@@ -40,11 +40,27 @@ void gen_stmt_code(Ast* ast, LocalTable* local_table, CodeEnv* env);
 // declaration-code-generator
 void gen_declaration_list_code(Ast* ast, LocalTable* local_table, CodeEnv* env);
 void gen_declaration_code(Ast* ast, LocalTable* local_table, CodeEnv* env);
-void gen_ident_initialization_code(Ast* ast, LocalTable* local_table, CodeEnv* env);
-void gen_array_initialization_code(Ast* ast, LocalTable* local_table, CodeEnv* env);
+
+// initializer-code-generator
+void gen_initializer_code(
+    Ast* init,
+    CType* ctype, int* stack_index,
+    LocalTable* local_table, CodeEnv* env
+);
+void gen_ident_initializer_code(
+    Ast* init,
+    CType* ctype, int* stack_index,
+    LocalTable* local_table, CodeEnv* env
+);
+void gen_array_initializer_code(
+    Ast* init,
+    CType* ctype, int* stack_index,
+    LocalTable* local_table, CodeEnv* env
+);
 
 // external-declaration-generator
 void gen_global_variable_code(GlobalVariable* gloval_variable, Vector* codes);
+void gen_global_data_code(GlobalData* global_data, Vector* codes);
 void gen_function_definition_code(Ast* ast, Vector* codes);
 
 // utils
@@ -634,16 +650,41 @@ void gen_declaration_list_code(Ast* ast, LocalTable* local_table, CodeEnv* env) 
 
 void gen_declaration_code(Ast* ast, LocalTable* local_table, CodeEnv* env) {
     Ast* ident = ast_nth_child(ast, 0);
+    Ast* init = NULL;
+
     switch(ident->ctype->basic_ctype) {
         case CTYPE_CHAR:
         case CTYPE_INT:
         case CTYPE_PTR:
-            if (ast->children->size == 1) break;
-            gen_ident_initialization_code(ast, local_table, env);
+            init = ast_nth_child(ast, 1);
             break;
         case CTYPE_ARRAY:
-            if (ast->children->size == 1) break;
-            gen_array_initialization_code(ast, local_table, env);
+            init = ast_nth_child(ast, 2);
+            break;
+        case CTYPE_FUNC:
+            // Do Nothing
+            break;
+    }
+    if (init == NULL) return;
+
+    int stack_index = local_table_get_stack_index(local_table, ident->value_ident);
+    gen_initializer_code(init, ident->ctype, &stack_index, local_table, env);
+}
+
+// initializer-code-generator
+void gen_initializer_code(
+    Ast* init,
+    CType* ctype, int* stack_index,
+    LocalTable* local_table, CodeEnv* env
+) {
+    switch(ctype->basic_ctype) {
+        case CTYPE_CHAR:
+        case CTYPE_INT:
+        case CTYPE_PTR:
+            gen_ident_initializer_code(init, ctype, stack_index, local_table, env);
+            break;
+        case CTYPE_ARRAY:
+            gen_array_initializer_code(init, ctype, stack_index, local_table, env);
             break;
         case CTYPE_FUNC:
             // Do Nothing
@@ -651,33 +692,28 @@ void gen_declaration_code(Ast* ast, LocalTable* local_table, CodeEnv* env) {
     }
 }
 
-void gen_ident_initialization_code(Ast* ast, LocalTable* local_table, CodeEnv* env) {
-    Ast* ident = ast_nth_child(ast, 0);
-    Ast* init = ast_nth_child(ast, 1);
+void gen_ident_initializer_code(
+    Ast* init,
+    CType* ctype, int* stack_index,
+    LocalTable* local_table, CodeEnv* env
+) {
     gen_expr_code(init, local_table, env);
-    gen_address_code(ident, local_table, env);
-
-    append_code(env->codes, "\tmov %%rax, %%rdi\n");
     append_code(env->codes, "\tpop %%rax\n");
-    gen_store_code(ident->ctype, env);
+    append_code(env->codes, "\tlea -%d(%%rbp), %%rdi\n", *stack_index);
+    gen_store_code(ctype, env);
+
+    *stack_index -= ctype->size;
 }
 
-void gen_array_initialization_code(Ast* ast, LocalTable* local_table, CodeEnv* env) {
-    Ast* ident = ast_nth_child(ast, 0);
-    Ast* init = ast_nth_child(ast, 1);
-
+void gen_array_initializer_code(
+    Ast* init,
+    CType* ctype, int* stack_index,
+    LocalTable* local_table, CodeEnv* env
+) {
     size_t i = 0, size = init->children->size;
-    CType* array_of = ident->ctype->array_of;
     for (i = 0; i < size; i++) {
-        gen_expr_code(ast_nth_child(init, i), local_table, env);
-        if (i == 0) {
-            gen_address_code(ident, local_table, env);
-            append_code(env->codes, "\tmov %%rax, %%rdi\n");
-        } else {
-            append_code(env->codes, "\tadd $%d, %%rdi\n", array_of->size);
-        }
-        append_code(env->codes, "\tpop %%rax\n");
-        gen_store_code(array_of, env);
+        Ast* child = ast_nth_child(init, i);
+        gen_initializer_code(child, ctype->array_of, stack_index, local_table, env);
     }
 }
 
@@ -696,31 +732,37 @@ void gen_global_variable_code(GlobalVariable* gloval_variable, Vector* codes) {
     append_code(codes, "\t.data\n");
     append_code(codes, "\t.align %d\n", align);
     append_code(codes, "_%s:\n", variable_name);
+    gen_global_data_code(gloval_variable->global_data, codes);
+}
 
-    GlobalData* global_data = gloval_variable->global_data;
-    size_t i = 0, size = global_data->inner_vector->size;
-    for (i = 0; i < size; i++) {
-        GlobalDatum* datum = global_data_nth_datum(global_data, i);
-        char* size_label = NULL;
-        switch (datum->type) {
-            case GBL_TYPE_INTEGER:
-                size_label = create_size_label(datum->size);
-                append_code(codes, "\t%s %d\n", size_label, datum->value_int);
-                free(size_label);
-                break;
-            case GBL_TYPE_ADDR:
-                size_label = create_size_label(datum->size);
-                append_code(codes, "\t%s _%s\n", size_label, datum->address_of);
-                free(size_label);
-                break;
-            case GBL_TYPE_STR:
-                append_code(codes, "\t.ascii \"%s\\0\"\n", datum->value_str);
-                break;
+void gen_global_data_code(GlobalData* global_data, Vector* codes) {
+     switch (global_data->type) {
+        case GBL_TYPE_INTEGER: {
+            char* size_label = create_size_label(global_data->size);
+            append_code(codes, "\t%s %d\n", size_label, global_data->value_int);
+            free(size_label);
+            break;
         }
-    }
-
-    if (global_data->zero_size > 0) {
-        append_code(codes, "\t.zero %d\n", global_data->zero_size);
+        case GBL_TYPE_ADDR: {
+            char* size_label = create_size_label(global_data->size);
+            append_code(codes, "\t%s _%s\n", size_label, global_data->address_of);
+            free(size_label);
+            break;
+        }
+        case GBL_TYPE_STR:
+            append_code(codes, "\t.ascii \"%s\\0\"\n", global_data->value_str);
+            break;
+        case GBL_TYPE_LIST: {
+            size_t i = 0, size = global_data->children->size - 1;
+            for (i = 0; i < size; i++) {
+                GlobalData* child = global_data_nth_child(global_data, i);
+                gen_global_data_code(child, codes);
+            }
+            GlobalData* zero = global_data_nth_child(global_data, size);
+            assert_code_gen(zero->type == GBL_TYPE_INTEGER && zero->value_int == 0);
+            if (zero->size > 0) append_code(codes, "\t.zero %d\n",zero->size);
+            break;
+        }
     }
 }
 

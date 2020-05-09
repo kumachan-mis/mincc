@@ -37,6 +37,7 @@ CType* parse_type_specifier(TokenList* tokenlist);
 Ast* parse_init_declarator(TokenList* tokenlist, CType* basic_ctype);
 Ast* parse_declarator(TokenList* tokenlist, CType* basic_ctype);
 Ast* parse_direct_declarator(TokenList* tokenlist, CType* ctype);
+Ast* parse_array_len_list(TokenList* tokenlist);
 Ast* parse_param_list(TokenList* tokenlist);
 Ast* parse_param_declaration(TokenList* tokenlist);
 Ast* parse_initializer(TokenList* tokenlist);
@@ -673,31 +674,30 @@ Ast* parse_direct_declarator(TokenList* tokenlist, CType* ctype) {
 
     Token* token = tokenlist_top(tokenlist);
     switch (token->type) {
-        case TOKEN_LBRACKET:
-            tokenlist_pop(tokenlist);
-    
-            token = assert_and_top_token(tokenlist, TOKEN_IMM_INT);
-            tokenlist_pop(tokenlist);
-            ident->ctype = ctype_new_array(ctype, token->value_int);
-            // TODO: assignment-expr for array length
-
-            ast = ast_new(AST_DECL, 1, ident);
-            assert_and_pop_token(tokenlist, TOKEN_RBRACKET);
+        case TOKEN_LBRACKET: {
+            Ast* array_len_list = parse_array_len_list(tokenlist);
+            ident->ctype = ctype;
+            size_t i = 0, size = array_len_list->children->size;
+            for (i = 0; i < size; i++) {
+                Ast* array_len = ast_nth_child(array_len_list, size - i - 1);
+                ident->ctype = ctype_new_array(ident->ctype, array_len->value_int);
+            }
+            ast = ast_new(AST_DECL, 2, ident, array_len_list);
             break;
+        }
         case TOKEN_LPAREN: {
-            assert_syntax(ctype->basic_ctype != CTYPE_ARRAY);
             tokenlist_pop(tokenlist);
             Ast* param_list = parse_param_list(tokenlist);
             assert_and_pop_token(tokenlist, TOKEN_RPAREN);
     
-            Vector* param_types = vector_new();
+            Vector* param_ctype_list = vector_new();
             size_t i = 0, size = param_list->children->size;
-            vector_reserve(param_types, size);
+            vector_reserve(param_ctype_list, size);
             for (i = 0; i < size; i++) {
                 Ast* param_ident = ast_nth_child(ast_nth_child(param_list, i), 0);
-                vector_push_back(param_types, ctype_copy(param_ident->ctype));
+                vector_push_back(param_ctype_list, ctype_copy(param_ident->ctype));
             }
-            ident->ctype = ctype_new_func(ctype, param_types);
+            ident->ctype = ctype_new_func(ctype, param_ctype_list);
             ast = ast_new(AST_DECL, 2, ident, param_list);
             break;
         }
@@ -707,6 +707,23 @@ Ast* parse_direct_declarator(TokenList* tokenlist, CType* ctype) {
             break;
     }
     // TODO: loop for complex declatations
+    return ast;
+}
+
+Ast* parse_array_len_list(TokenList* tokenlist) {
+    Ast* ast = ast_new(AST_ARRAY_LEN_LIST, 0);
+    while (1) {
+        Token* token = tokenlist_top(tokenlist);
+        if (token->type != TOKEN_LBRACKET) break;
+        tokenlist_pop(tokenlist);
+
+        token = assert_and_top_token(tokenlist, TOKEN_IMM_INT);
+        tokenlist_pop(tokenlist);
+        ast_append_child(ast, ast_new_int(AST_IMM_INT, token->value_int));
+        // TODO: assignment-expr for array length
+
+        assert_and_pop_token(tokenlist, TOKEN_RBRACKET);
+    }
     return ast;
 }
 
@@ -752,12 +769,12 @@ Ast* parse_initializer_list(TokenList* tokenlist) {
     Token* token = tokenlist_top(tokenlist);
     if (token->type == TOKEN_RBRACE) return ast;
 
-    ast_append_child(ast, parse_assignment_expr(tokenlist));
+    ast_append_child(ast, parse_initializer(tokenlist));
     while (1) {
         token = tokenlist_top(tokenlist);
         if (token->type == TOKEN_RBRACE) break;
         assert_and_pop_token(tokenlist, TOKEN_COMMA);
-        ast_append_child(ast, parse_assignment_expr(tokenlist));
+        ast_append_child(ast, parse_initializer(tokenlist));
     }
     return ast;
 }

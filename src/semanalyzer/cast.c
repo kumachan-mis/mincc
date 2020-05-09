@@ -27,8 +27,7 @@ void apply_inplace_array_to_ptr_conversion(Ast* ast) {
     )
         return;
 
-    Ast* array = ast_new_ident(AST_IDENT, str_new(ast->value_ident));
-    array->ctype = ctype_copy(ast->ctype);
+    Ast* array = ast_copy(ast);
     Ast* ptr = ast_new(AST_ARRAY_TO_PTR, 1, array);
     ptr->ctype = ctype_new_ptr(ctype_copy(array->ctype->array_of));
     ast_move(ast, ptr);
@@ -49,7 +48,7 @@ void apply_inplace_function_declaration_conversion(Ast* ast) {
     Ast* param_list = ast_nth_child(ast, 1);
     size_t i = 0, size = param_list->children->size;
     for (i = 0; i < size; i++) {
-        CType* param_ctype = (CType*)vector_at(func_ident->ctype->func->param_types, i);
+        CType* param_ctype = (CType*)vector_at(func_ident->ctype->func->param_list, i);
         CType* param_ident_ctype = ast_nth_child(ast_nth_child(param_list, i), 0)->ctype;
         switch (param_ctype->basic_ctype) {
             case CTYPE_CHAR:

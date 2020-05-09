@@ -76,6 +76,7 @@ typedef enum {
     AST_DECL_LIST,
     AST_DECL,
     AST_FUNC_DEF,
+    AST_ARRAY_LEN_LIST,
     AST_PARAM_LIST,
     AST_INIT_LIST
 } AstType;

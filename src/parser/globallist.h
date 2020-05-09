@@ -9,22 +9,19 @@
 typedef enum {
     GBL_TYPE_INTEGER,
     GBL_TYPE_ADDR,
-    GBL_TYPE_STR
-} GlobalDatumType;
+    GBL_TYPE_STR,
+    GBL_TYPE_LIST
+} GlobalDataType;
 
 typedef struct {
-    GlobalDatumType type;
+    GlobalDataType type;
     int size;
     union {
         int value_int;
         char* address_of;
         char* value_str;
+        Vector* children;
     };
-} GlobalDatum;
-
-typedef struct {
-    Vector* inner_vector;
-    int zero_size;
 } GlobalData;
 
 typedef enum {
@@ -62,12 +59,12 @@ char* global_list_create_str_label(GlobalList* global_list);
 void global_list_delete(GlobalList* global_list);
 
 // global-data
-GlobalData* global_data_new();
-void global_data_append_integer(GlobalData* global_data, int value_int, int size);
-void global_data_append_address(GlobalData* global_data, char* address_of);
-void global_data_append_string(GlobalData* global_data, char* value_str);
-GlobalDatum* global_data_nth_datum(GlobalData* global_data, size_t n);
-void global_data_set_zero_size(GlobalData* global_data, int zero_size);
+GlobalData* global_data_new_list();
+GlobalData* global_data_new_integer(int value_int, int size);
+GlobalData* global_data_new_address(char* address_of);
+GlobalData* global_data_new_string(char* value_str);
+void global_data_append_child(GlobalData* global_data, GlobalData* child);
+GlobalData* global_data_nth_child(GlobalData* global_data, size_t n);
 void global_data_delete(GlobalData* global_data);
 
 
