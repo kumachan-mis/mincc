@@ -704,6 +704,10 @@ void local_array_initializer_to_completed(Ast* init, CType* array_ctype) {
                     }
                     break;
                 case CTYPE_ARRAY:
+                    for (i = 0; i < size; i++) {
+                        Ast* child = ast_nth_child(init, i);
+                        local_array_initializer_to_completed(child, array_ctype->array_of);
+                    }
                     for (i = size; i < array_len; i++) {
                         Ast* child = ast_new(AST_INIT_LIST, 0);
                         local_array_initializer_to_completed(child, array_ctype->array_of);

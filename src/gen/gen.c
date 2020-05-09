@@ -40,8 +40,23 @@ void gen_stmt_code(Ast* ast, LocalTable* local_table, CodeEnv* env);
 // declaration-code-generator
 void gen_declaration_list_code(Ast* ast, LocalTable* local_table, CodeEnv* env);
 void gen_declaration_code(Ast* ast, LocalTable* local_table, CodeEnv* env);
-void gen_ident_initialization_code(Ast* ast, LocalTable* local_table, CodeEnv* env);
-void gen_array_initialization_code(Ast* ast, LocalTable* local_table, CodeEnv* env);
+
+// initializer-code-generator
+void gen_initializer_code(
+    Ast* init,
+    CType* ctype, int* stack_index,
+    LocalTable* local_table, CodeEnv* env
+);
+void gen_ident_initializer_code(
+    Ast* init,
+    CType* ctype, int* stack_index,
+    LocalTable* local_table, CodeEnv* env
+);
+void gen_array_initializer_code(
+    Ast* init,
+    CType* ctype, int* stack_index,
+    LocalTable* local_table, CodeEnv* env
+);
 
 // external-declaration-generator
 void gen_global_variable_code(GlobalVariable* gloval_variable, Vector* codes);
@@ -635,16 +650,41 @@ void gen_declaration_list_code(Ast* ast, LocalTable* local_table, CodeEnv* env) 
 
 void gen_declaration_code(Ast* ast, LocalTable* local_table, CodeEnv* env) {
     Ast* ident = ast_nth_child(ast, 0);
+    Ast* init = NULL;
+
     switch(ident->ctype->basic_ctype) {
         case CTYPE_CHAR:
         case CTYPE_INT:
         case CTYPE_PTR:
-            if (ast->children->size == 1) break;
-            gen_ident_initialization_code(ast, local_table, env);
+            init = ast_nth_child(ast, 1);
             break;
         case CTYPE_ARRAY:
-            if (ast->children->size == 2) break;
-            gen_array_initialization_code(ast, local_table, env);
+            init = ast_nth_child(ast, 2);
+            break;
+        case CTYPE_FUNC:
+            // Do Nothing
+            break;
+    }
+    if (init == NULL) return;
+
+    int stack_index = local_table_get_stack_index(local_table, ident->value_ident);
+    gen_initializer_code(init, ident->ctype, &stack_index, local_table, env);
+}
+
+// initializer-code-generator
+void gen_initializer_code(
+    Ast* init,
+    CType* ctype, int* stack_index,
+    LocalTable* local_table, CodeEnv* env
+) {
+    switch(ctype->basic_ctype) {
+        case CTYPE_CHAR:
+        case CTYPE_INT:
+        case CTYPE_PTR:
+            gen_ident_initializer_code(init, ctype, stack_index, local_table, env);
+            break;
+        case CTYPE_ARRAY:
+            gen_array_initializer_code(init, ctype, stack_index, local_table, env);
             break;
         case CTYPE_FUNC:
             // Do Nothing
@@ -652,33 +692,28 @@ void gen_declaration_code(Ast* ast, LocalTable* local_table, CodeEnv* env) {
     }
 }
 
-void gen_ident_initialization_code(Ast* ast, LocalTable* local_table, CodeEnv* env) {
-    Ast* ident = ast_nth_child(ast, 0);
-    Ast* init = ast_nth_child(ast, 1);
+void gen_ident_initializer_code(
+    Ast* init,
+    CType* ctype, int* stack_index,
+    LocalTable* local_table, CodeEnv* env
+) {
     gen_expr_code(init, local_table, env);
-    gen_address_code(ident, local_table, env);
-
-    append_code(env->codes, "\tmov %%rax, %%rdi\n");
     append_code(env->codes, "\tpop %%rax\n");
-    gen_store_code(ident->ctype, env);
+    append_code(env->codes, "\tlea -%d(%%rbp), %%rdi\n", *stack_index);
+    gen_store_code(ctype, env);
+
+    *stack_index -= ctype->size;
 }
 
-void gen_array_initialization_code(Ast* ast, LocalTable* local_table, CodeEnv* env) {
-    Ast* ident = ast_nth_child(ast, 0);
-    Ast* init = ast_nth_child(ast, 2);
-
+void gen_array_initializer_code(
+    Ast* init,
+    CType* ctype, int* stack_index,
+    LocalTable* local_table, CodeEnv* env
+) {
     size_t i = 0, size = init->children->size;
-    CType* array_of = ident->ctype->array_of;
     for (i = 0; i < size; i++) {
-        gen_expr_code(ast_nth_child(init, i), local_table, env);
-        if (i == 0) {
-            gen_address_code(ident, local_table, env);
-            append_code(env->codes, "\tmov %%rax, %%rdi\n");
-        } else {
-            append_code(env->codes, "\tadd $%d, %%rdi\n", array_of->size);
-        }
-        append_code(env->codes, "\tpop %%rax\n");
-        gen_store_code(array_of, env);
+        Ast* child = ast_nth_child(init, i);
+        gen_initializer_code(child, ctype->array_of, stack_index, local_table, env);
     }
 }
 
