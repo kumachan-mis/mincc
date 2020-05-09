@@ -1017,4 +1017,47 @@ int main() {
     return 0;
 }"                           "11\$0\$10\$0\$"
 
+test_mincc "
+int put_int(int x);
+
+int g[3][5] = {{1, 2, 3}, {6, 7, 8, 9, 10}};
+int main() {
+    int l[3][5] = {{-1, -2, -3}, {-6, -7, -8, -9, -10}};
+    put_int(l[0][1]);
+    put_int(l[0][3]);
+    put_int(l[1][2]);
+    put_int(l[0][6]);
+    put_int(l[2][4]);
+    put_int(g[0][1]);
+    put_int(g[0][3]);
+    put_int(g[1][2]);
+    put_int(g[0][6]);
+    put_int(g[2][4]);
+    return 0;
+}"                           "-2\$0\$-8\$-7\$0\$2\$0\$8\$7\$0\$"
+
+test_mincc "
+int put_int(int x);
+
+int main() {
+    int a[2][1][1] = {};
+    put_int(a[0][0][0]);
+    put_int(a[1][0][0]);
+    return 0;
+}"                           "0\$0\$"
+
+test_mincc "
+char* put_str(char* s);
+
+char g[2][10] = { \"global0\", \"g1\" };
+
+int main() {
+    char l[2][10] = {\"l0\", \"local1\"};
+    put_str(l[0]);
+    put_str(l[1]);
+    put_str(g[0]);
+    put_str(g[1]);
+    return 0;
+}"                           "l0\$local1\$global0\$g1"
+
 teardown_test
